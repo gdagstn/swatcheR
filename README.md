@@ -29,8 +29,8 @@ The swatch will then have **k * m** colors, where **k** is the number of *cluste
 
 
 <p float="left">
-  <img src="https://user-images.githubusercontent.com/21171362/171857049-cf10f09b-a1ee-4557-a0dd-4098671c1440.png" height="400" />
-  <img src="https://user-images.githubusercontent.com/21171362/171857470-fa09a096-f1ea-4f55-bd66-5ddce60328c6.png" height="400" /> 
+  <img src="https://user-images.githubusercontent.com/21171362/171857049-cf10f09b-a1ee-4557-a0dd-4098671c1440.png" height="350" />
+  <img src="https://user-images.githubusercontent.com/21171362/171857470-fa09a096-f1ea-4f55-bd66-5ddce60328c6.png" height="350" /> 
 </p>
 
 
