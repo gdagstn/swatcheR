@@ -33,9 +33,8 @@ The approach works as follows:
 
 - The most abundant color in the painting from each cluster is retained, so that every part of the color space is well represented.
 
-<center>
-     <img width="448" alt="Screenshot 2022-06-04 at 6 11 16 PM" src="https://user-images.githubusercontent.com/21171362/171994833-89882dcd-38c7-43ac-b47c-68af7a041175.png">
-</center>
+<img width="458" alt="Screenshot 2022-06-04 at 6 19 48 PM" src="https://user-images.githubusercontent.com/21171362/171995101-3f5a11d8-06fe-4671-a11e-a18049a8583e.png">
+
 
 
 The swatch will then have **k * m** colors, where **k** is the number of *clusters* (most diverse colors) and **m** is the number of *most representative colors per cluster* (hues within the cluster). This means that looking for 20 colors with k = 20 and m = 1 will yield a different result than k = 10 and m = 2, although the final number of colors will be the same; k = 20 gives more separated colors (as it will effectively partition the DIN99 space in 20 separate clusters), whereas k = 10 and m = 2 will select color couples from each cluster. The difference may be subtle in many cases but it allows users to fine tune the process.
