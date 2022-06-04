@@ -154,10 +154,11 @@ DIN99toCIELabmod <- function (L99o, a99o, b99o) {
 #'
 #' Quantifies summary colors in a picture
 #'
-#' @param file a character indicating a path to a .JPG or .PNG file. Either "file"
+#' @param file_path a character indicating a path to a .JPG or .PNG file. Either "file"
 #'     or "link" must be specified.
 #' @param link a character indicating a URL to a .JPG or .PNG file. Either "link"
 #'     or "file" must be specified.
+#' @param m a raster object created by either \code{readJPEG} or \code{readPNG}
 #' @param reference_space a reference space array created by a call to \code{makeReferenceSpace()}.
 #'    Default is NULL, which internally loads a reference space comprising 2000
 #'    colors in DIN99 space.
@@ -183,30 +184,29 @@ DIN99toCIELabmod <- function (L99o, a99o, b99o) {
 #' @export
 
 
-analyzePictureCol = function(file = NULL, link = NULL, reference_space = NULL) {
+analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_space = NULL) {
 
-  if(is.null(file) & is.null(link)) stop("A URL (link) or file path (file) must be specified.")
+  if(is.null(file_path) & is.null(link) & is.null(m)) stop("A URL (link), file path (file) or raster (m) must be specified.")
   if(is.null(reference_space)) reference_space = din_2000
 
-  if(!is.null(link)) {
+  if(!is.null(link) & is.null(file_path) & is.null(m)) {
     temp = tempfile()
     download.file(link, destfile = temp)
-    ext = tolower(file_ext(temp))
-    if(ext == "jpg" | ext == "jpeg") {
-      m = readJPEG(temp, native = TRUE)
-    } else if(ext == "png") {
-      m = readPNG(temp, native = TRUE)
-    }
+    ext = tolower(tools::file_ext(link))
+      if(ext == "jpg" | ext == "jpeg") {
+        m = readJPEG(temp, native = TRUE)
+     } else if(ext == "png") {
+        m = readPNG(temp, native = TRUE)
+      }
 
-  } else if(is.null(link) & !is.null(file)) {
-    ext = tolower(file_ext(file))
+  } else if(is.null(link) & !is.null(file_path) & is.null(m)) {
+    ext = tolower(tools::file_ext(file_path))
     if(ext == "jpg" | ext == "jpeg") {
-      m = readJPEG(file, native = TRUE)
+      m = readJPEG(file_path, native = TRUE)
     } else if(ext == "png") {
-      m = readPNG(file, native = TRUE)
+      m = readPNG(file_path, native = TRUE)
     }
   }
-
   m2 = melt(matrix(as.numeric(m), nrow = attr(m, "dim")[1], byrow = TRUE))
 
   m2$hex = decode_native(m2$value)
@@ -341,7 +341,7 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
 #'
 #' Plots a picture and the resulting summary palette side by side
 #'
-#' @param file a character indicating a path to a .JPG or .PNG file. Either "file"
+#' @param file_path a character indicating a path to a .JPG or .PNG file. Either "file"
 #'     or "link" must be specified.
 #' @param link a character indicating a URL to a .JPG or .PNG file. Either "link"
 #'     or "file" must be specified.
@@ -383,7 +383,7 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
 #'
 #' @export
 
-plotWithPal = function(file = NULL, link = NULL, reference_space = NULL,
+plotWithPal = function(file_path = NULL, link = NULL, reference_space = NULL,
                        n = 20, sub = 1, filter_luminance = "both",
                        filter_chroma = NULL, filter_sd = 1.5, order = "L",
                        bg_color = "black", title = NULL){
@@ -393,21 +393,23 @@ plotWithPal = function(file = NULL, link = NULL, reference_space = NULL,
     download.file(link, destfile = temp)
     path = temp
     ext = tolower(file_ext(link))
-  } else if(!is.null(file)) {
-    path = file
+  } else if(!is.null(file_path)) {
+    path = file_path
     ext = tolower(file_ext(path))
   }
-
-  pal = getPalette(analysis = analyzePictureCol(path, reference_space = reference_space),
-                   n = n, sub = sub, filter_luminance = filter_luminance,
-                   filter_chroma = filter_chroma, filter_sd = filter_sd,
-                   order = order)
 
   if(ext == "jpg" | ext == "jpeg") {
     m = readJPEG(path, native = TRUE)
   } else if(ext == "png") {
     m = readPNG(path, native = TRUE)
   }
+
+  pal = getPalette(analysis = analyzePictureCol(m = m, reference_space = reference_space),
+                   n = n, sub = sub, filter_luminance = filter_luminance,
+                   filter_chroma = filter_chroma, filter_sd = filter_sd,
+                   order = order)
+
+
 
   res = dim(m)[2:1]
 
@@ -442,4 +444,3 @@ plotWithPal = function(file = NULL, link = NULL, reference_space = NULL,
   return(p)
 
 }
-
