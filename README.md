@@ -33,13 +33,18 @@ The approach works as follows:
 
 - The most abundant color in the painting from each cluster is retained, so that every part of the color space is well represented.
 
-<img width="445" alt="Screenshot 2022-06-04 at 5 01 08 PM" src="https://user-images.githubusercontent.com/21171362/171992379-2ac0e397-9a5b-466c-8f25-61d6f1e45c02.png">
+<center>
+     <img width="448" alt="Screenshot 2022-06-04 at 6 11 16 PM" src="https://user-images.githubusercontent.com/21171362/171994833-89882dcd-38c7-43ac-b47c-68af7a041175.png">
+</center>
 
 
 The swatch will then have **k * m** colors, where **k** is the number of *clusters* (most diverse colors) and **m** is the number of *most representative colors per cluster* (hues within the cluster). This means that looking for 20 colors with k = 20 and m = 1 will yield a different result than k = 10 and m = 2, although the final number of colors will be the same; k = 20 gives more separated colors (as it will effectively partition the DIN99 space in 20 separate clusters), whereas k = 10 and m = 2 will select color couples from each cluster. The difference may be subtle in many cases but it allows users to fine tune the process.
 
-<img width="1115" alt="Screenshot 2022-06-04 at 4 59 58 PM" src="https://user-images.githubusercontent.com/21171362/171992426-28209a0b-319d-452e-89a7-d2ef9a34537d.png">
 
+<img width="1115" alt="Screenshot 2022-06-04 at 4 59 58 PM" src="https://user-images.githubusercontent.com/21171362/171992426-28209a0b-319d-452e-89a7-d2ef9a34537d.png">
+<p align = "center">
+Left: k = 20, m = 1; right: k = 10, m = 2
+</p>
 
 This procedure is quite fast mainly because of two tricks:
 
@@ -69,17 +74,22 @@ pal
 
 plotWithPal(link = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/2560px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg", bg = "white")
 ```
+
 <img width="596" alt="Screenshot 2022-06-04 at 5 55 41 PM" src="https://user-images.githubusercontent.com/21171362/171994345-3cfcf103-d3cd-4ff4-bae4-7696bcb33a4b.png">
 
 As you can see the palette changes slightly, because the k-means search has a stochastic component to it, although this is mitigated by using 100 restarts.
 
-If you want to use a different reference space you can build your own using `makeReferenceSpace()`:
+The user can optionally decide whether to apply filters to color brightness (luminance) and saturation (chroma), and how much these filters remove in proportion to the luminance/chroma value distribution. 
+
+## Different reference spaces
+
+The package comes with a reference space built on 2000 clusters in DIN99 space. However, if you want to use a different reference space, you can build your own using `makeReferenceSpace()`:
 
 ```
 lab_1500 = makeReferenceSpace(k = 1500, space = "LAB")
 ```
 
-The available options are CIELab ("LAB") and DIN99 ("DIN99"). 
+The available options at the moment are CIELab ("LAB") and DIN99 ("DIN99"). 
 
 # Benchmarking
 
