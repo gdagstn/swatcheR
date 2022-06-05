@@ -72,7 +72,7 @@ This is the result of 12 random swatches from Caravaggio's _I bari_:
 
 _I bari (Cardsharps)_, Caravaggio, 1594
 
-<img width="500" alt="Screenshot 2022-06-06 at 1 36 34 AM" src="https://user-images.githubusercontent.com/21171362/172063070-cd6dc50f-b00c-4fbd-b2ee-939109215ad8.png">
+<img width="300" alt="Screenshot 2022-06-06 at 1 36 34 AM" src="https://user-images.githubusercontent.com/21171362/172063070-cd6dc50f-b00c-4fbd-b2ee-939109215ad8.png">
 
 As you can see the yellow tones tend to appear frequently, but all swatches are different. 
 
@@ -113,7 +113,7 @@ pal = getPalette(analysis = analysis, n = 50, sub = 3)
 cont_pal = getContinuousPalette(pal, tries = 5)
 
 ```
-<img width="630" alt="Screenshot 2022-06-06 at 1 42 00 AM" src="https://user-images.githubusercontent.com/21171362/172063266-9ec9fa88-54ad-465d-bd7c-e6531cf94956.png">
+<img width="300" alt="Screenshot 2022-06-06 at 1 42 00 AM" src="https://user-images.githubusercontent.com/21171362/172063266-9ec9fa88-54ad-465d-bd7c-e6531cf94956.png">
 
 ## Hierachical clustering or k-means? 
 
