@@ -5,21 +5,22 @@
 \title{Plot a picture with its palette}
 \usage{
 plotWithPal(
-  file = NULL,
+  file_path = NULL,
   link = NULL,
   reference_space = NULL,
+  method = "HC",
   n = 20,
   sub = 1,
   filter_luminance = "both",
   filter_chroma = NULL,
   filter_sd = 1.5,
   order = "L",
-  bg_color = "black",
+  bg_color = "white",
   title = NULL
 )
 }
 \arguments{
-\item{file}{a character indicating a path to a .JPG or .PNG file. Either "file"
+\item{file_path}{a character indicating a path to a .JPG or .PNG file. Either "file"
 or "link" must be specified.}
 
 \item{link}{a character indicating a URL to a .JPG or .PNG file. Either "link"
@@ -27,7 +28,11 @@ or "file" must be specified.}
 
 \item{reference_space}{a reference space array created by a call to \code{makeReferenceSpace()}}
 
-\item{n}{a numeric, the number of major colors (k-means clusters)}
+\item{method}{a character specifying the method for clustering:
+"HC" for hierarchical clustering and "kmeans" for k-means clustering.
+Default is "HC".}
+
+\item{n}{a numeric, the number of major colors (clusters)}
 
 \item{sub}{a numeric, the number o minor colors (top abundant colors per cluster)}
 
@@ -49,7 +54,8 @@ should be ordered. One of "H" (hue), "C" (chroma), "L" (luminance). The
 final order has only aesthetic purposes and does not change the palette.
 Default is "L".}
 
-\item{bg_color}{the background color (as named color, hexadecimal or rgb)}
+\item{bg_color}{the background color (as named color, hexadecimal or rgb).
+Default is "white".}
 
 \item{title}{character, the title of the plot.}
 }

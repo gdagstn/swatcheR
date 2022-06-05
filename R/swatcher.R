@@ -162,6 +162,9 @@ DIN99toCIELabmod <- function (L99o, a99o, b99o) {
 #' @param reference_space a reference space array created by a call to \code{makeReferenceSpace()}.
 #'    Default is NULL, which internally loads a reference space comprising 2000
 #'    colors in DIN99 space.
+#' @param keep_extremes logical, should the extreme points of the space
+#'    (corresponding to any combination of full R, G, or B channel) be kept?
+#'    Default is TRUE.
 #'
 #' @return a named numeric vector of summary color quantification (number of
 #'     pixels with that summary color), whose names are the hexadecimal values of
@@ -177,17 +180,16 @@ DIN99toCIELabmod <- function (L99o, a99o, b99o) {
 #' @importFrom jpeg readJPEG
 #' @importFrom png readPNG
 #' @importFrom utils download.file
-#' @importFrom farver decode_native
+#' @importFrom farver decode_native encode_native
 #' @importFrom reshape2 melt
 #' @importFrom tools file_ext
 #'
 #' @export
 
-
-analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_space = NULL) {
+analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_space = NULL, keep_extremes = TRUE) {
 
   if(is.null(file_path) & is.null(link) & is.null(m)) stop("A URL (link), file path (file) or raster (m) must be specified.")
-  if(is.null(reference_space)) reference_space = din_2000
+  if(is.null(reference_space)) reference_space = din_4096
 
   if(!is.null(link) & is.null(file_path) & is.null(m)) {
     temp = tempfile()
@@ -214,12 +216,19 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
   rgb_values = round(coords(colorspace::hex2RGB(m2$hex)) * 255) + 1
 
   m2$cluster = reference_space[cbind(rgb_values[,1], rgb_values[,2], rgb_values[,3])]
+
+  if(keep_extremes) {
+
+    for(i in c("#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF","#00FFFF",
+            "#FF00FF", "#FFFF00")) {
+       m2$cluster[m2$hex == i] = encode_native(i)
+    }
+  }
+
   res = table(m2$cluster)
   names(res) = decode_native(names(res))
   return(res)
 }
-
-
 
 #' Get a summary palette
 #'
@@ -227,8 +236,13 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'
 #' @param analysis a named numeric with the results of a color analysis, i.e. the output
 #'     of \code{analyzePaintingCol}
+#' @param method a character specifying the method for clustering:
+#'     "HC" for hierarchical clustering and "kmeans" for k-means clustering.
+#'     Default is "HC".
 #' @param n a numeric, the number of major colors (k-means clusters)
 #' @param sub a numeric, the number o minor colors (top abundant colors per cluster)
+#' @param ntop a numeric, the number of top colors to use for the initial clustering.
+#'     Default is 2000.
 #' @param filter_luminance character, one of "dark", "bright", or "both". Removes
 #'     colors within a certain number of standard deviations from the mean of the
 #'     luminance values. "dark" keeps darker colors, "bright" keeps brighter colors,
@@ -248,14 +262,14 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'
 #' @details This function performs several operations on a color analysis result
 #'    to isolate a pre-determined number of the most representative colors in the
-#'    analysis. First, the analysis results are sorted and the top 500 colors are retained;
-#'    then they are optionally transformed to polarLUV coordinates (i.e. HCL) and
-#'    filtered based on the distribution of luminance and/or chroma. Then, they
-#'    are transformed to DIN99 space,and clustered using k-means clustering, using
-#'    the user-defined parameter \code{n} as number of clusters. Within each
-#'    cluster, the top \code{sub} colors (as defined by the analysis) are kept.
-#'    The palette is then optionally ordered according to one of hue, chroma, or
-#'    luminance.
+#'    analysis. First, the analysis results are sorted and the \code{ntop} top colors
+#'    are retained; then they are optionally transformed to polarLUV coordinates
+#'    (i.e. HCL) and filtered based on the distribution of luminance and/or chroma.
+#'    Then, they are transformed to DIN99 space,and clustered using k-means
+#'    clustering, using the user-defined parameter \code{n} as number of clusters.
+#'    Within each cluster, the top \code{sub} colors (as defined by the analysis)
+#'    are kept. The palette is then optionally ordered according to one of hue,
+#'    chroma, or luminance.
 #'
 #' @author Giuseppe D'Agostino
 #'
@@ -266,10 +280,10 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'
 #' @export
 
-getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
+getPalette = function(analysis, method = "HC", n = 10, sub = 1, ntop = 2000, filter_luminance = "both",
                       filter_chroma = NULL, filter_sd = 1.5, order = "L") {
 
-  sorted = sort(analysis, decreasing = TRUE)[seq_len(min(500, sum(analysis > 0)))]
+  sorted = sort(analysis, decreasing = TRUE)[seq_len(min(ntop, sum(analysis > 0)))]
 
   hexcols = names(sorted)
 
@@ -304,16 +318,21 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
   hexcols = hexcols[intersect(luminance_pick, chroma_pick)]
 
   sorted = sorted[hexcols]
-
   sorted = sort(sorted, decreasing = TRUE)
 
+  if(method == "kmeans") {
   cielab = coords(as(RGB(t(col2rgb(hexcols))[,1]/255, t(col2rgb(hexcols))[,2]/255, t(col2rgb(hexcols))[,3]/255), "LAB"))
-
   din =  CIELabtoDIN99mod(L = cielab[,1], a = cielab[,2], b = cielab[,3])
-
   kdin = kmeans(din, centers = min(c(n, nrow(din) - 1)), nstart = 100)
-
   ks_sorted = data.frame("pixels" = as.numeric(sorted), "cluster" = kdin$cluster, row.names = names(sorted))
+
+  } else if(method == "HC"){
+    ks_sorted = hClusterPalette(palette = hexcols, n = n)
+    ks_sorted$pixels =  analysis[ks_sorted$col]
+    rownames(ks_sorted) = ks_sorted$col
+    ks_sorted$col = NULL
+    ks_sorted = ks_sorted[,2:1]
+  }
 
   pal_kdin = as.character(unlist(lapply(split(ks_sorted, ks_sorted$cluster), function(x) {
     if(nrow(x) >= sub) {
@@ -321,9 +340,9 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
     } else {
       return(rownames(x))}}), use.names = FALSE))
 
-  if(length(pal_kdin) < n * sub) {
-    pal_kdin = c(pal_kdin, rep("#00000000", (n * sub)-length(pal_kdin)))
-  }
+   if(length(pal_kdin) < n * sub) {
+     pal_kdin = c(pal_kdin, rep("#00000000", (n * sub)-length(pal_kdin)))
+   }
 
   if(!is.null(order)) {
     colz = hex2RGB(pal_kdin)
@@ -336,7 +355,6 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
   return(unique(pal_final))
 }
 
-
 #' Plot a picture with its palette
 #'
 #' Plots a picture and the resulting summary palette side by side
@@ -346,7 +364,10 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
 #' @param link a character indicating a URL to a .JPG or .PNG file. Either "link"
 #'     or "file" must be specified.
 #' @param reference_space a reference space array created by a call to \code{makeReferenceSpace()}
-#' @param n a numeric, the number of major colors (k-means clusters)
+#' @param method a character specifying the method for clustering:
+#'     "HC" for hierarchical clustering and "kmeans" for k-means clustering.
+#'     Default is "HC".
+#' @param n a numeric, the number of major colors (clusters)
 #' @param sub a numeric, the number o minor colors (top abundant colors per cluster)
 #' @param filter_luminance character, one of "dark", "bright", or "both". Removes
 #'     colors within a certain number of standard deviations from the mean of the
@@ -362,7 +383,8 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
 #'     should be ordered. One of "H" (hue), "C" (chroma), "L" (luminance). The
 #'     final order has only aesthetic purposes and does not change the palette.
 #'     Default is "L".
-#' @param bg_color the background color (as named color, hexadecimal or rgb)
+#' @param bg_color the background color (as named color, hexadecimal or rgb).
+#'     Default is "white".
 #' @param title character, the title of the plot.
 #'
 #' @return a \code{ggplot2} plot with the picture and the corresponding palette.
@@ -379,14 +401,14 @@ getPalette = function(analysis, n = 10, sub = 1, filter_luminance = "both",
 #' @importFrom jpeg readJPEG
 #' @importFrom png readPNG
 #' @importFrom tools file_ext
-#' @importFrom ggplot2 ggplot geom_rect geom_text theme_void annotation_raster theme_void theme ggtitle aes_string element_rect coord_fixed xlim ylim
+#' @importFrom ggplot2 ggplot geom_rect geom_text theme_void annotation_raster theme_void theme ggtitle aes_string element_rect coord_fixed xlim ylim element_text
 #'
 #' @export
 
 plotWithPal = function(file_path = NULL, link = NULL, reference_space = NULL,
-                       n = 20, sub = 1, filter_luminance = "both",
+                       method = "HC", n = 20, sub = 1, filter_luminance = "both",
                        filter_chroma = NULL, filter_sd = 1.5, order = "L",
-                       bg_color = "black", title = NULL){
+                       bg_color = "white", title = NULL){
 
   if(!is.null(link)) {
     temp = tempfile()
@@ -405,7 +427,8 @@ plotWithPal = function(file_path = NULL, link = NULL, reference_space = NULL,
   }
 
   pal = getPalette(analysis = analyzePictureCol(m = m, reference_space = reference_space),
-                   n = n, sub = sub, filter_luminance = filter_luminance,
+                   method = method, n = n, sub = sub,
+                   filter_luminance = filter_luminance,
                    filter_chroma = filter_chroma, filter_sd = filter_sd,
                    order = order)
 
@@ -439,8 +462,129 @@ plotWithPal = function(file_path = NULL, link = NULL, reference_space = NULL,
     theme_void() +
     theme(plot.background = element_rect(fill = bg_color, color = bg_color))
 
-  if(!is.null(title)) p = p + ggtitle(title)
+  if(!is.null(title)) p = p +
+    ggtitle(title) +
+    theme(plot.title = element_text(hjust = 0.5))
 
   return(p)
 
+}
+
+#' Get palette distances
+#'
+#' Calculate pairwise differences between colors in a palette
+#'
+#' @param palette a vector of colors as hexadecimal values
+#'
+#' @return a \code{data.frame} with color pairs and their DeltaE2000 color difference
+#'
+#' @details Internal use only.
+#'
+#' @author Giuseppe D'Agostino
+#'
+#' @importFrom colorspace hex2RGB
+#' @importFrom methods as
+
+getPaletteDistances = function(palette) {
+  paletteLAB = as(hex2RGB(palette), "LAB")
+  dists = expand.grid(seq_len(length(palette)), seq_len(length(palette)))
+  dists = dists[dists[,1] != dists[,2],]
+  dists$Col1 = palette[dists[,1]]
+  dists$Col2 = palette[dists[,2]]
+  dists$DE2000 = deltaE2000mod(coords(paletteLAB)[dists$Var1,], coords(paletteLAB)[dists$Var2,])
+  return(dists)
+}
+
+#' Palette hierarchical clustering
+#'
+#' Applies hierarchical clustering to a palette returning clusters
+#'
+#' @param palette a vector of colors as hexadecimal values
+#' @param n a numeric, desired number of clusters
+#'
+#' @return a \code{data.frame} with colors and clusters.
+#'
+#' @details Internal use only.
+#'
+#' @author Giuseppe D'Agostino
+#'
+#' @importFrom reshape2 acast
+#' @importFrom stats hclust dist cutree as.dist
+
+hClusterPalette = function(palette, n) {
+  df = getPaletteDistances(palette)
+  distmat = as.dist(acast(df, formula = Var1 ~ Var2, value.var = "DE2000"))
+  hc = hclust(distmat)
+  clusters = cutree(hc, k = n)
+  clusters_df = data.frame("col" = palette[as.numeric(names(clusters))], "cluster" = clusters)
+  return(clusters_df)
+}
+
+#' DeltaE200 color difference
+#'
+#' Calculates the Delta E (CIE 2000) color difference between two matrices in CIELab space
+#'
+#' @param Lab1 matrix with L, a, b coordinates for one set of colors
+#' @param Lab2 matrix with L, a, b coordinates for another set of colors
+#'
+#' @return a vector of DeltaE2000 color distances
+#'
+#' @details Internal use only. Slightly modified to take vectors and not single
+#'     values as input. Originally present in the \code{colorscience} package
+#'     by Jose Gama.
+#'
+#' @author Jose Gama, modified by Giuseppe D'Agostino
+#'
+#' @references Bruce Justin Lindbloom, 2013 Color Calculator http://www.brucelindbloom.com
+
+deltaE2000mod <- function (Lab1, Lab2) {
+  kL <- 1
+  kC <- 1
+  kH <- 1
+  lBarPrime <- 0.5 * (Lab1[,1] + Lab2[,1])
+  c1 <- sqrt(Lab1[,2] * Lab1[,2] + Lab1[,3] * Lab1[,3])
+  c2 <- sqrt(Lab2[,2] * Lab2[,2] + Lab2[,3] * Lab2[,3])
+  cBar <- 0.5 * (c1 + c2)
+  cBar7 <- cBar^7
+  g <- 0.5 * (1 - sqrt(cBar7/(cBar7 + 6103515625)))
+  a1Prime <- Lab1[,2] * (1 + g)
+  a2Prime <- Lab2[,2] * (1 + g)
+  c1Prime <- sqrt(a1Prime * a1Prime + Lab1[,3] * Lab1[,3])
+  c2Prime <- sqrt(a2Prime * a2Prime + Lab2[,3] * Lab2[,3])
+  cBarPrime <- 0.5 * (c1Prime + c2Prime)
+  h1Prime <- (atan2(Lab1[,3], a1Prime) * 180)/pi
+  h1Prime[h1Prime < 0] <- h1Prime[h1Prime < 0] + 360
+  h2Prime <- (atan2(Lab2[,3], a2Prime) * 180)/pi
+  h2Prime[h2Prime < 0] <- h2Prime[h2Prime < 0] + 360
+
+  hBarPrime <- abs(h1Prime - h2Prime)
+  hBarPrime[hBarPrime > 180] <-  0.5 * (h1Prime[hBarPrime > 180] + h2Prime[hBarPrime > 180] + 360)
+  hBarPrime[hBarPrime <= 180] <- 0.5 * (h1Prime[hBarPrime <= 180] + h2Prime[hBarPrime <= 180])
+
+  t <- 1 - 0.17 * cos(pi * (hBarPrime - 30)/180) + 0.24 * cos(pi *
+                                                                (2 * hBarPrime)/180) + 0.32 * cos(pi * (3 * hBarPrime +
+                                                                                                          6)/180) - 0.2 * cos(pi * (4 * hBarPrime - 63)/180)
+  dhPrime = abs(h2Prime - h1Prime)
+  dhPrime[dhPrime <= 180] <- h2Prime[dhPrime <= 180] - h1Prime[dhPrime <= 180]
+  dhPrime[dhPrime > 180 & h2Prime <= h1Prime] <- h2Prime[dhPrime > 180 & h2Prime <= h1Prime]  - h1Prime[dhPrime > 180 & h2Prime <= h1Prime]  + 360
+  dhPrime[dhPrime > 180 & h2Prime > h1Prime] <- h2Prime[dhPrime > 180 & h2Prime > h1Prime] - h1Prime[dhPrime > 180 & h2Prime > h1Prime] - 360
+
+  dLPrime <- Lab2[,1] - Lab1[,1]
+  dCPrime <- c2Prime - c1Prime
+  dHPrime <- 2 * sqrt(c1Prime * c2Prime) * sin(pi * (0.5 *
+                                                       dhPrime)/180)
+  sL <- 1 + ((0.015 * (lBarPrime - 50) * (lBarPrime - 50))/sqrt(20 +
+                                                                  (lBarPrime - 50) * (lBarPrime - 50)))
+  sC <- 1 + 0.045 * cBarPrime
+  sH <- 1 + 0.015 * cBarPrime * t
+  dTheta <- 30 * exp(-((hBarPrime - 275)/25) * ((hBarPrime -
+                                                   275)/25))
+  cBarPrime7 <- cBarPrime * cBarPrime * cBarPrime * cBarPrime *
+    cBarPrime * cBarPrime * cBarPrime
+  rC <- sqrt(cBarPrime7/(cBarPrime7 + 6103515625))
+  rT <- -2 * rC * sin(pi * (2 * dTheta)/180)
+  res = sqrt((dLPrime/(kL * sL)) * (dLPrime/(kL * sL)) + (dCPrime/(kC *
+                                                                     sC)) * (dCPrime/(kC * sC)) + (dHPrime/(kH * sH)) * (dHPrime/(kH *
+                                                                                                                                    sH)) + (dCPrime/(kC * sC)) * (dHPrime/(kH * sH)) * rT)
+  return(res)
 }

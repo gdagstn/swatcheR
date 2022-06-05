@@ -4,18 +4,30 @@
 \alias{analyzePictureCol}
 \title{Analyze picture colors}
 \usage{
-analyzePictureCol(file = NULL, link = NULL, reference_space = NULL)
+analyzePictureCol(
+  file_path = NULL,
+  link = NULL,
+  m = NULL,
+  reference_space = NULL,
+  keep_extremes = TRUE
+)
 }
 \arguments{
-\item{file}{a character indicating a path to a .JPG or .PNG file. Either "file"
+\item{file_path}{a character indicating a path to a .JPG or .PNG file. Either "file"
 or "link" must be specified.}
 
 \item{link}{a character indicating a URL to a .JPG or .PNG file. Either "link"
 or "file" must be specified.}
 
+\item{m}{a raster object created by either \code{readJPEG} or \code{readPNG}}
+
 \item{reference_space}{a reference space array created by a call to \code{makeReferenceSpace()}.
 Default is NULL, which internally loads a reference space comprising 2000
 colors in DIN99 space.}
+
+\item{keep_extremes}{logical, should the extreme points of the space
+(corresponding to any combination of full R, G, or B channel) be kept?
+Default is TRUE.}
 }
 \value{
 a named numeric vector of summary color quantification (number of

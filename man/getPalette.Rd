@@ -6,8 +6,10 @@
 \usage{
 getPalette(
   analysis,
+  method = "HC",
   n = 10,
   sub = 1,
+  ntop = 2000,
   filter_luminance = "both",
   filter_chroma = NULL,
   filter_sd = 1.5,
@@ -18,9 +20,16 @@ getPalette(
 \item{analysis}{a named numeric with the results of a color analysis, i.e. the output
 of \code{analyzePaintingCol}}
 
+\item{method}{a character specifying the method for clustering:
+"HC" for hierarchical clustering and "kmeans" for k-means clustering.
+Default is "HC".}
+
 \item{n}{a numeric, the number of major colors (k-means clusters)}
 
 \item{sub}{a numeric, the number o minor colors (top abundant colors per cluster)}
+
+\item{ntop}{a numeric, the number of top colors to use for the initial clustering.
+Default is 2000.}
 
 \item{filter_luminance}{character, one of "dark", "bright", or "both". Removes
 colors within a certain number of standard deviations from the mean of the
@@ -49,14 +58,14 @@ Automatically finds a color palette from a color analysis
 \details{
 This function performs several operations on a color analysis result
    to isolate a pre-determined number of the most representative colors in the
-   analysis. First, the analysis results are sorted and the top 500 colors are retained;
-   then they are optionally transformed to polarLUV coordinates (i.e. HCL) and
-   filtered based on the distribution of luminance and/or chroma. Then, they
-   are transformed to DIN99 space,and clustered using k-means clustering, using
-   the user-defined parameter \code{n} as number of clusters. Within each
-   cluster, the top \code{sub} colors (as defined by the analysis) are kept.
-   The palette is then optionally ordered according to one of hue, chroma, or
-   luminance.
+   analysis. First, the analysis results are sorted and the \code{ntop} top colors
+   are retained; then they are optionally transformed to polarLUV coordinates
+   (i.e. HCL) and filtered based on the distribution of luminance and/or chroma.
+   Then, they are transformed to DIN99 space,and clustered using k-means
+   clustering, using the user-defined parameter \code{n} as number of clusters.
+   Within each cluster, the top \code{sub} colors (as defined by the analysis)
+   are kept. The palette is then optionally ordered according to one of hue,
+   chroma, or luminance.
 }
 \author{
 Giuseppe D'Agostino
