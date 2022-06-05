@@ -12,7 +12,7 @@ devtools::install_github("gdagstn/swatcheR")
 ```
 
 # Motivation and methodology
-This package lets you automatically and quickly select a color palette (or **swatch**) from a picture in .jpg or .png format. It is based on k-means clustering, which means that there will be some variability in the results unless you set a seed for the random number generator. 
+This package lets you automatically and quickly select a color palette (or **swatch**) from a picture in .jpg or .png format. It is based on hierarchical or k-means clustering, which means that there will be some variability in the results unless you set a seed for the random number generator. 
 
 The idea is not new: the `paletter` [package](https://github.com/AndreaCirilloAC/paletter) by Andrea Cirillo does exactly this. However, the approach presented here is different and arguably much faster (with some caveats). 
 
