@@ -54,7 +54,7 @@ The other positive aspect is that if you are using `swatcher` to analyze paintin
 
 ## What about continuous palettes?
 
-It is notoriously hard to interpolate colors beyond a certain range of hue. For a given categorical palette, in fact, there can be several different continuous palettes that can be automatically generated among a set of colors. `swatcheR` tries to find good continuous palettes borrowing some tricks from computational geometry and graph theory.
+It is notoriously hard to interpolate colors that have a high variability in hue. For a given categorical palette several different continuous palettes can be automatically generated. `swatcheR` tries to find good continuous palettes borrowing some tricks from computational geometry and graph theory:
 
 - First, a large (n > 100) palette is used as input, and projected in DIN99 space. 
 - The palette is clustered via k-means (k set to the square root of the number of colors in the palette)
