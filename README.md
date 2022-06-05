@@ -88,12 +88,15 @@ There are some use cases in which HC outperforms k-means, and vice versa. For in
 
 <img width="764" alt="Screenshot 2022-06-05 at 2 21 02 PM" src="https://user-images.githubusercontent.com/21171362/172038112-beddeba8-662e-47ab-9d5e-a633a3fa3574.png">
 
-If there are many different colors, k-means can have a higher range to capture small nuances:
+If there are many different colors, k-means can have a higher range to capture nuances:
 
 <img width="1155" alt="Screenshot 2022-06-05 at 2 27 28 PM" src="https://user-images.githubusercontent.com/21171362/172038355-c00839a0-b631-4533-8a25-824319755957.png">
 
 _I bari (Cardsharps)_, Caravaggio, 1594
 
+<img width="1077" alt="Screenshot 2022-06-05 at 8 00 25 PM" src="https://user-images.githubusercontent.com/21171362/172049432-e384c45f-446a-43cb-8b9d-64f514d7b524.png">
+
+In the picture above, HC fails to capture the more saturated yellow component of the sunset, whereas k-means has a better coverage of the range. 
 
 There are many parameteres that can be tuned to generate a satistfying palette.
 
