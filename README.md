@@ -57,7 +57,7 @@ The other positive aspect is that if you are using `swatcher` to analyze paintin
 It is notoriously hard to interpolate colors beyond a certain range of hue. For a given categorical palette, in fact, there can be several different continuous palettes that can be automatically generated among a set of colors. `swatcheR` tries to find good continuous palettes borrowing some tricks from computational geometry and graph theory.
 
 - First, a large (n > 100) palette is used as input, and projected in DIN99 space. 
-- The palette is clustered via k-means (~40 clusters)
+- The palette is clustered via k-means (k set to the square root of the number of colors in the palette)
 - a k-nearest neighbor graph is built on these clusters, using k = 2 neighbors
 - only the largest component of the graph is retained, and a minimum spanning tree is calculated for the subgraph
 - the longest path on the MST of the subgraph is retained
