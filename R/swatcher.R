@@ -160,7 +160,7 @@ DIN99toCIELabmod <- function (L99o, a99o, b99o) {
 #'     or "file" must be specified.
 #' @param m a raster object created by either \code{readJPEG} or \code{readPNG}
 #' @param reference_space a reference space array created by a call to \code{makeReferenceSpace()}.
-#'    Default is NULL, which internally loads a reference space comprising 2000
+#'    Default is NULL, which internally loads a reference space comprising 4096
 #'    colors in DIN99 space.
 #' @param keep_extremes logical, should the extreme points of the space
 #'    (corresponding to any combination of full R, G, or B channel) be kept?
@@ -191,24 +191,27 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
   if(is.null(file_path) & is.null(link) & is.null(m)) stop("A URL (link), file path (file) or raster (m) must be specified.")
   if(is.null(reference_space)) reference_space = din_4096
 
-  if(!is.null(link) & is.null(file_path) & is.null(m)) {
-    temp = tempfile()
-    download.file(link, destfile = temp)
-    ext = tolower(tools::file_ext(link))
+  if(is.null(m)){
+    if(!is.null(link) & is.null(file_path)) {
+      temp = tempfile()
+      download.file(link, destfile = temp)
+      ext = tolower(tools::file_ext(link))
       if(ext == "jpg" | ext == "jpeg") {
         m = readJPEG(temp, native = TRUE)
-     } else if(ext == "png") {
+      } else if(ext == "png") {
         m = readPNG(temp, native = TRUE)
       }
 
-  } else if(is.null(link) & !is.null(file_path) & is.null(m)) {
-    ext = tolower(tools::file_ext(file_path))
-    if(ext == "jpg" | ext == "jpeg") {
-      m = readJPEG(file_path, native = TRUE)
-    } else if(ext == "png") {
-      m = readPNG(file_path, native = TRUE)
+    } else if(is.null(link) & !is.null(file_path)) {
+      ext = tolower(tools::file_ext(file_path))
+      if(ext == "jpg" | ext == "jpeg") {
+        m = readJPEG(file_path, native = TRUE)
+      } else if(ext == "png") {
+        m = readPNG(file_path, native = TRUE)
+      }
     }
   }
+
   m2 = melt(matrix(as.numeric(m), nrow = attr(m, "dim")[1], byrow = TRUE))
 
   m2$hex = decode_native(m2$value)
@@ -220,8 +223,8 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
   if(keep_extremes) {
 
     for(i in c("#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF","#00FFFF",
-            "#FF00FF", "#FFFF00")) {
-       m2$cluster[m2$hex == i] = encode_native(i)
+               "#FF00FF", "#FFFF00")) {
+      m2$cluster[m2$hex == i] = encode_native(i)
     }
   }
 
@@ -234,11 +237,23 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'
 #' Automatically finds a color palette from a color analysis
 #'
+#' @param file_path a character indicating a path to a .JPG or .PNG file.
+#'     Either \code{file_path},  \code{link} or  \code{m} must be specified.
+#'     Default is NULL.
+#' @param link a character indicating a URL to a .JPG or .PNG file. Either
+#'     \code{file_path},  \code{link} or  \code{m} must be specified.
+#'     Default is NULL.
+#' @param m a raster object created by either \code{readJPEG} or \code{readPNG}.
+#'     Either \code{file_path},  \code{link} or  \code{m} must be specified.
+#'     Default is NULL.
 #' @param analysis a named numeric with the results of a color analysis, i.e. the output
-#'     of \code{analyzePaintingCol}
+#'     of \code{analyzePaintingCol}. Default is NULL.
+#' @param reference_space a reference space array created by a call to \code{makeReferenceSpace()}.
+#'    Default is NULL, which internally loads a reference space comprising 4096
+#'    colors in DIN99 space.
 #' @param method a character specifying the method for clustering:
-#'     "HC" for hierarchical clustering and "kmeans" for k-means clustering.
-#'     Default is "HC".
+#'     "HC" for hierarchical clustering, "kmeans" for k-means clustering, and
+#'     "kmeans_classic" for a legacy implementation. Default is "HC".
 #' @param n a numeric, the number of major colors (k-means clusters)
 #' @param sub a numeric, the number o minor colors (top abundant colors per cluster)
 #' @param ntop a numeric, the number of top colors to use for the initial clustering.
@@ -257,6 +272,7 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'     should be ordered. One of "H" (hue), "C" (chroma), "L" (luminance). The
 #'     final order has only aesthetic purposes and does not change the palette.
 #'     Default is "L".
+#' @param keep_extremes logical, passed to \code{analyzePictureCol}
 #'
 #' @return a character vector of hexadecimal color values of length \code{n} * \code{sub}.
 #'
@@ -265,8 +281,11 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'    analysis. First, the analysis results are sorted and the \code{ntop} top colors
 #'    are retained; then they are optionally transformed to polarLUV coordinates
 #'    (i.e. HCL) and filtered based on the distribution of luminance and/or chroma.
-#'    Then, they are transformed to DIN99 space,and clustered using k-means
-#'    clustering, using the user-defined parameter \code{n} as number of clusters.
+#'    Then, they are transformed to DIN99 space,and clustered using either
+#'    hierarchical or k-means clustering, using the user-defined parameter \code{n}
+#'    as number of clusters. Another method that does not use the reference space
+#'    is "kmeans_classic", which applies k-means directly to the image (after
+#'    the RGB values have been transformed to DIN99 space).
 #'    Within each cluster, the top \code{sub} colors (as defined by the analysis)
 #'    are kept. The palette is then optionally ordered according to one of hue,
 #'    chroma, or luminance.
@@ -280,69 +299,148 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'
 #' @export
 
-getPalette = function(analysis, method = "HC", n = 10, sub = 1, ntop = 2000, filter_luminance = "both",
-                      filter_chroma = NULL, filter_sd = 1.5, order = "L") {
+getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
+                      reference_space = NULL, method = "HC", n = 10, sub = 1,
+                      ntop = 2000, filter_luminance = "both", filter_chroma = NULL,
+                      filter_sd = 1.5, order = "L", keep_extremes = TRUE) {
 
-  sorted = sort(analysis, decreasing = TRUE)[seq_len(min(ntop, sum(analysis > 0)))]
 
-  hexcols = names(sorted)
+  if(!method %in% c("HC", "kmeans", "kmeans_classic")) stop("Unknown method.")
 
-  if(!is.null(filter_luminance)) {
+  if(is.null(m)){
+    if(is.null(file_path) & is.null(link)) stop("A URL (link) or a file path (file_path) must be specified.")
 
-    pal_RGB = hex2RGB(hexcols)
-    luminance = coords(as(pal_RGB, "polarLUV"))[,"L"]
+    if(!is.null(link) & is.null(file_path)) {
+      temp = tempfile()
+      download.file(link, destfile = temp)
+      ext = tolower(tools::file_ext(link))
+      if(ext == "jpg" | ext == "jpeg") {
+        m = readJPEG(temp, native = TRUE)
+      } else if(ext == "png") {
+        m = readPNG(temp, native = TRUE)
+      }
 
-    if(filter_luminance == "both") {
-      luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))) & luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
-    } else if(filter_luminance == "bright") {
-      luminance_pick = which(luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
-    } else if(filter_luminance == "dark") {
-      luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))))
+    } else if(is.null(link) & !is.null(file_path)) {
+      ext = tolower(tools::file_ext(file_path))
+      if(ext == "jpg" | ext == "jpeg") {
+        m = readJPEG(file_path, native = TRUE)
+      } else if(ext == "png") {
+        m = readPNG(file_path, native = TRUE)
+      }
     }
-  } else luminance_pick = seq_len(length(hexcols))
-
-  if(!is.null(filter_chroma)) {
-
-    pal_RGB = hex2RGB(hexcols)
-    chroma = coords(as(pal_RGB, "polarLUV"))[,"C"]
-
-    if(filter_chroma == "both") {
-      chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))) & chroma >= (median(chroma) - (filter_sd * mad(chroma))))
-    } else if(filter_chroma == "high") {
-      chroma_pick = which(chroma >= (median(chroma) - (filter_sd * mad(chroma))))
-    } else if(filter_chroma == "low") {
-      chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))))
-    }
-  } else chroma_pick = seq_len(length(hexcols))
-
-  hexcols = hexcols[intersect(luminance_pick, chroma_pick)]
-
-  sorted = sorted[hexcols]
-  sorted = sort(sorted, decreasing = TRUE)
-
-  if(method == "kmeans") {
-  cielab = coords(as(RGB(t(col2rgb(hexcols))[,1]/255, t(col2rgb(hexcols))[,2]/255, t(col2rgb(hexcols))[,3]/255), "LAB"))
-  din =  CIELabtoDIN99mod(L = cielab[,1], a = cielab[,2], b = cielab[,3])
-  kdin = kmeans(din, centers = min(c(n, nrow(din) - 1)), nstart = 100)
-  ks_sorted = data.frame("pixels" = as.numeric(sorted), "cluster" = kdin$cluster, row.names = names(sorted))
-
-  } else if(method == "HC"){
-    ks_sorted = hClusterPalette(palette = hexcols, n = n)
-    ks_sorted$pixels =  analysis[ks_sorted$col]
-    rownames(ks_sorted) = ks_sorted$col
-    ks_sorted$col = NULL
-    ks_sorted = ks_sorted[,2:1]
   }
 
-  pal_kdin = as.character(unlist(lapply(split(ks_sorted, ks_sorted$cluster), function(x) {
-    if(nrow(x) >= sub) {
-      return(rownames(x)[seq_len(sub)])
-    } else {
-      return(rownames(x))}}), use.names = FALSE))
+  if(method == "kmeans_classic") {
 
-   if(length(pal_kdin) < n * sub) {
-     pal_kdin = c(pal_kdin, rep("#00000000", (n * sub)-length(pal_kdin)))
-   }
+    m2 = melt(matrix(as.numeric(m), nrow = attr(m, "dim")[1], byrow = TRUE))
+    m2$hex <- hexcols <- decode_native(m2$value)
+    din = CIELabtoDIN99mod(coords(as(hex2RGB(m2$hex), "LAB")))
+
+    kk = suppressWarnings(kmeans(din, centers = n))
+
+    m2$cluster = kk$cluster
+
+    if(!is.null(filter_luminance)) {
+
+      pal_RGB = hex2RGB(hexcols)
+      luminance = coords(as(pal_RGB, "polarLUV"))[,"L"]
+
+      if(filter_luminance == "both") {
+        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))) & luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
+      } else if(filter_luminance == "bright") {
+        luminance_pick = which(luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
+      } else if(filter_luminance == "dark") {
+        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))))
+      }
+    } else luminance_pick = seq_len(length(hexcols))
+
+    if(!is.null(filter_chroma)) {
+
+      pal_RGB = hex2RGB(hexcols)
+      chroma = coords(as(pal_RGB, "polarLUV"))[,"C"]
+
+      if(filter_chroma == "both") {
+        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))) & chroma >= (median(chroma) - (filter_sd * mad(chroma))))
+      } else if(filter_chroma == "high") {
+        chroma_pick = which(chroma >= (median(chroma) - (filter_sd * mad(chroma))))
+      } else if(filter_chroma == "low") {
+        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))))
+      }
+    } else chroma_pick = seq_len(length(hexcols))
+
+    hexcols = hexcols[intersect(luminance_pick, chroma_pick)]
+    m2 = m2[m2$hex %in% hexcols,]
+    m2$pixels = table(m2$hex)[m2$hex]
+    m2 = m2[order(m2$pixels, decreasing = TRUE),]
+    m2_list = split(m2, m2$cluster)
+
+    pal_kdin = unlist(lapply(m2_list, function(x) x[seq_len(sub),"hex"]), use.names = FALSE)
+
+  } else if(method != "kmeans_classic") {
+
+    analysis = analyzePictureCol(m = m, reference_space = reference_space, keep_extremes = keep_extremes)
+
+    sorted = sort(analysis, decreasing = TRUE)[seq_len(min(ntop, sum(analysis > 0)))]
+
+    hexcols = names(sorted)
+
+    if(!is.null(filter_luminance)) {
+
+      pal_RGB = hex2RGB(hexcols)
+      luminance = coords(as(pal_RGB, "polarLUV"))[,"L"]
+
+      if(filter_luminance == "both") {
+        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))) & luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
+      } else if(filter_luminance == "bright") {
+        luminance_pick = which(luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
+      } else if(filter_luminance == "dark") {
+        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))))
+      }
+    } else luminance_pick = seq_len(length(hexcols))
+
+    if(!is.null(filter_chroma)) {
+
+      pal_RGB = hex2RGB(hexcols)
+      chroma = coords(as(pal_RGB, "polarLUV"))[,"C"]
+
+      if(filter_chroma == "both") {
+        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))) & chroma >= (median(chroma) - (filter_sd * mad(chroma))))
+      } else if(filter_chroma == "high") {
+        chroma_pick = which(chroma >= (median(chroma) - (filter_sd * mad(chroma))))
+      } else if(filter_chroma == "low") {
+        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))))
+      }
+    } else chroma_pick = seq_len(length(hexcols))
+
+    hexcols = hexcols[intersect(luminance_pick, chroma_pick)]
+
+    sorted = sorted[hexcols]
+    sorted = sort(sorted, decreasing = TRUE)
+
+    if(method == "kmeans") {
+      cielab = coords(as(RGB(t(col2rgb(hexcols))[,1]/255, t(col2rgb(hexcols))[,2]/255, t(col2rgb(hexcols))[,3]/255), "LAB"))
+      din =  CIELabtoDIN99mod(L = cielab[,1], a = cielab[,2], b = cielab[,3])
+      kdin = kmeans(din, centers = min(c(n, nrow(din) - 1)), nstart = 100)
+      ks_sorted = data.frame("pixels" = as.numeric(sorted), "cluster" = kdin$cluster, row.names = names(sorted))
+
+    } else if(method == "HC"){
+      ks_sorted = hClusterPalette(palette = hexcols, n = n)
+      ks_sorted$pixels =  analysis[ks_sorted$col]
+      rownames(ks_sorted) = ks_sorted$col
+      ks_sorted$col = NULL
+      ks_sorted = ks_sorted[,2:1]
+    }
+
+    pal_kdin = as.character(unlist(lapply(split(ks_sorted, ks_sorted$cluster), function(x) {
+      if(nrow(x) >= sub) {
+        return(rownames(x)[seq_len(sub)])
+      } else {
+        return(rownames(x))}}), use.names = FALSE))
+  }
+
+  if(length(pal_kdin) < n * sub) {
+    pal_kdin = c(pal_kdin, rep("#00000000", (n * sub)-length(pal_kdin)))
+  }
 
   if(!is.null(order)) {
     colz = hex2RGB(pal_kdin)
@@ -363,10 +461,11 @@ getPalette = function(analysis, method = "HC", n = 10, sub = 1, ntop = 2000, fil
 #'     or "link" must be specified.
 #' @param link a character indicating a URL to a .JPG or .PNG file. Either "link"
 #'     or "file" must be specified.
+#' @param m a raster object created by either \code{readJPEG} or \code{readPNG}
 #' @param reference_space a reference space array created by a call to \code{makeReferenceSpace()}
 #' @param method a character specifying the method for clustering:
-#'     "HC" for hierarchical clustering and "kmeans" for k-means clustering.
-#'     Default is "HC".
+#'     "HC" for hierarchical clustering, "kmeans" for k-means clustering, and
+#'     "kmeans_classic" for a legacy implementation. Default is "HC".
 #' @param n a numeric, the number of major colors (clusters)
 #' @param sub a numeric, the number o minor colors (top abundant colors per cluster)
 #' @param filter_luminance character, one of "dark", "bright", or "both". Removes
@@ -385,6 +484,7 @@ getPalette = function(analysis, method = "HC", n = 10, sub = 1, ntop = 2000, fil
 #'     Default is "L".
 #' @param bg_color the background color (as named color, hexadecimal or rgb).
 #'     Default is "white".
+#' @param keep_extremes logical, passed to \code{analyzePictureCol} if needed.
 #' @param title character, the title of the plot.
 #'
 #' @return a \code{ggplot2} plot with the picture and the corresponding palette.
@@ -405,10 +505,14 @@ getPalette = function(analysis, method = "HC", n = 10, sub = 1, ntop = 2000, fil
 #'
 #' @export
 
-plotWithPal = function(file_path = NULL, link = NULL, reference_space = NULL,
+plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space = NULL,
                        method = "HC", n = 20, sub = 1, filter_luminance = "both",
                        filter_chroma = NULL, filter_sd = 1.5, order = "L",
-                       bg_color = "white", title = NULL){
+                       bg_color = "white", keep_extremes = TRUE, title = NULL){
+
+  if(is.null(m)){
+
+    if(is.null(file_path) & is.null(link)) stop("A URL (link), file path (file_path) or raster (m) must be specified.")
 
   if(!is.null(link)) {
     temp = tempfile()
@@ -425,14 +529,12 @@ plotWithPal = function(file_path = NULL, link = NULL, reference_space = NULL,
   } else if(ext == "png") {
     m = readPNG(path, native = TRUE)
   }
-
-  pal = getPalette(analysis = analyzePictureCol(m = m, reference_space = reference_space),
+ }
+  pal = getPalette(m = m, reference_space = reference_space,
                    method = method, n = n, sub = sub,
                    filter_luminance = filter_luminance,
                    filter_chroma = filter_chroma, filter_sd = filter_sd,
                    order = order)
-
-
 
   res = dim(m)[2:1]
 
@@ -561,13 +663,15 @@ deltaE2000mod <- function (Lab1, Lab2) {
   hBarPrime[hBarPrime > 180] <-  0.5 * (h1Prime[hBarPrime > 180] + h2Prime[hBarPrime > 180] + 360)
   hBarPrime[hBarPrime <= 180] <- 0.5 * (h1Prime[hBarPrime <= 180] + h2Prime[hBarPrime <= 180])
 
-  t <- 1 - 0.17 * cos(pi * (hBarPrime - 30)/180) + 0.24 * cos(pi *
-                                                                (2 * hBarPrime)/180) + 0.32 * cos(pi * (3 * hBarPrime +
-                                                                                                          6)/180) - 0.2 * cos(pi * (4 * hBarPrime - 63)/180)
+  t <- 1 - 0.17 * cos(pi * (hBarPrime - 30)/180) + 0.24 * cos(pi * (2 * hBarPrime)/180) +
+    0.32 * cos(pi * (3 * hBarPrime + 6)/180) - 0.2 * cos(pi * (4 * hBarPrime - 63)/180)
+
   dhPrime = abs(h2Prime - h1Prime)
   dhPrime[dhPrime <= 180] <- h2Prime[dhPrime <= 180] - h1Prime[dhPrime <= 180]
-  dhPrime[dhPrime > 180 & h2Prime <= h1Prime] <- h2Prime[dhPrime > 180 & h2Prime <= h1Prime]  - h1Prime[dhPrime > 180 & h2Prime <= h1Prime]  + 360
-  dhPrime[dhPrime > 180 & h2Prime > h1Prime] <- h2Prime[dhPrime > 180 & h2Prime > h1Prime] - h1Prime[dhPrime > 180 & h2Prime > h1Prime] - 360
+  dhPrime[dhPrime > 180 & h2Prime <= h1Prime] <- h2Prime[dhPrime > 180 & h2Prime <= h1Prime]  -
+    h1Prime[dhPrime > 180 & h2Prime <= h1Prime]  + 360
+  dhPrime[dhPrime > 180 & h2Prime > h1Prime] <- h2Prime[dhPrime > 180 & h2Prime > h1Prime] -
+    h1Prime[dhPrime > 180 & h2Prime > h1Prime] - 360
 
   dLPrime <- Lab2[,1] - Lab1[,1]
   dCPrime <- c2Prime - c1Prime
@@ -575,6 +679,7 @@ deltaE2000mod <- function (Lab1, Lab2) {
                                                        dhPrime)/180)
   sL <- 1 + ((0.015 * (lBarPrime - 50) * (lBarPrime - 50))/sqrt(20 +
                                                                   (lBarPrime - 50) * (lBarPrime - 50)))
+
   sC <- 1 + 0.045 * cBarPrime
   sH <- 1 + 0.015 * cBarPrime * t
   dTheta <- 30 * exp(-((hBarPrime - 275)/25) * ((hBarPrime -
@@ -583,8 +688,10 @@ deltaE2000mod <- function (Lab1, Lab2) {
     cBarPrime * cBarPrime * cBarPrime
   rC <- sqrt(cBarPrime7/(cBarPrime7 + 6103515625))
   rT <- -2 * rC * sin(pi * (2 * dTheta)/180)
-  res = sqrt((dLPrime/(kL * sL)) * (dLPrime/(kL * sL)) + (dCPrime/(kC *
-                                                                     sC)) * (dCPrime/(kC * sC)) + (dHPrime/(kH * sH)) * (dHPrime/(kH *
-                                                                                                                                    sH)) + (dCPrime/(kC * sC)) * (dHPrime/(kH * sH)) * rT)
+  res = sqrt((dLPrime/(kL * sL)) * (dLPrime/(kL * sL)) +
+               (dCPrime/(kC * sC)) * (dCPrime/(kC * sC)) +
+               (dHPrime/(kH * sH)) * (dHPrime/(kH * sH)) +
+               (dCPrime/(kC * sC)) * (dHPrime/(kH * sH)) * rT)
   return(res)
 }
+

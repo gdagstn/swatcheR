@@ -7,6 +7,7 @@
 plotWithPal(
   file_path = NULL,
   link = NULL,
+  m = NULL,
   reference_space = NULL,
   method = "HC",
   n = 20,
@@ -16,6 +17,7 @@ plotWithPal(
   filter_sd = 1.5,
   order = "L",
   bg_color = "white",
+  keep_extremes = TRUE,
   title = NULL
 )
 }
@@ -26,11 +28,13 @@ or "link" must be specified.}
 \item{link}{a character indicating a URL to a .JPG or .PNG file. Either "link"
 or "file" must be specified.}
 
+\item{m}{a raster object created by either \code{readJPEG} or \code{readPNG}}
+
 \item{reference_space}{a reference space array created by a call to \code{makeReferenceSpace()}}
 
 \item{method}{a character specifying the method for clustering:
-"HC" for hierarchical clustering and "kmeans" for k-means clustering.
-Default is "HC".}
+"HC" for hierarchical clustering, "kmeans" for k-means clustering, and
+"kmeans_classic" for a legacy implementation. Default is "HC".}
 
 \item{n}{a numeric, the number of major colors (clusters)}
 
@@ -56,6 +60,8 @@ Default is "L".}
 
 \item{bg_color}{the background color (as named color, hexadecimal or rgb).
 Default is "white".}
+
+\item{keep_extremes}{logical, passed to \code{analyzePictureCol} if needed.}
 
 \item{title}{character, the title of the plot.}
 }

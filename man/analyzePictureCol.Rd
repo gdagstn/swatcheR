@@ -22,7 +22,7 @@ or "file" must be specified.}
 \item{m}{a raster object created by either \code{readJPEG} or \code{readPNG}}
 
 \item{reference_space}{a reference space array created by a call to \code{makeReferenceSpace()}.
-Default is NULL, which internally loads a reference space comprising 2000
+Default is NULL, which internally loads a reference space comprising 4096
 colors in DIN99 space.}
 
 \item{keep_extremes}{logical, should the extreme points of the space

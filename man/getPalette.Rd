@@ -5,7 +5,11 @@
 \title{Get a summary palette}
 \usage{
 getPalette(
-  analysis,
+  file_path = NULL,
+  link = NULL,
+  m = NULL,
+  analysis = NULL,
+  reference_space = NULL,
   method = "HC",
   n = 10,
   sub = 1,
@@ -13,16 +17,33 @@ getPalette(
   filter_luminance = "both",
   filter_chroma = NULL,
   filter_sd = 1.5,
-  order = "L"
+  order = "L",
+  keep_extremes = TRUE
 )
 }
 \arguments{
+\item{file_path}{a character indicating a path to a .JPG or .PNG file.
+Either \code{file_path},  \code{link} or  \code{m} must be specified.
+Default is NULL.}
+
+\item{link}{a character indicating a URL to a .JPG or .PNG file. Either
+\code{file_path},  \code{link} or  \code{m} must be specified.
+Default is NULL.}
+
+\item{m}{a raster object created by either \code{readJPEG} or \code{readPNG}.
+Either \code{file_path},  \code{link} or  \code{m} must be specified.
+Default is NULL.}
+
 \item{analysis}{a named numeric with the results of a color analysis, i.e. the output
-of \code{analyzePaintingCol}}
+of \code{analyzePaintingCol}. Default is NULL.}
+
+\item{reference_space}{a reference space array created by a call to \code{makeReferenceSpace()}.
+Default is NULL, which internally loads a reference space comprising 4096
+colors in DIN99 space.}
 
 \item{method}{a character specifying the method for clustering:
-"HC" for hierarchical clustering and "kmeans" for k-means clustering.
-Default is "HC".}
+"HC" for hierarchical clustering, "kmeans" for k-means clustering, and
+"kmeans_classic" for a legacy implementation. Default is "HC".}
 
 \item{n}{a numeric, the number of major colors (k-means clusters)}
 
@@ -48,6 +69,8 @@ deviations above/below which filters are applied. Default is 1.5.}
 should be ordered. One of "H" (hue), "C" (chroma), "L" (luminance). The
 final order has only aesthetic purposes and does not change the palette.
 Default is "L".}
+
+\item{keep_extremes}{logical, passed to \code{analyzePictureCol}}
 }
 \value{
 a character vector of hexadecimal color values of length \code{n} * \code{sub}.
@@ -61,8 +84,11 @@ This function performs several operations on a color analysis result
    analysis. First, the analysis results are sorted and the \code{ntop} top colors
    are retained; then they are optionally transformed to polarLUV coordinates
    (i.e. HCL) and filtered based on the distribution of luminance and/or chroma.
-   Then, they are transformed to DIN99 space,and clustered using k-means
-   clustering, using the user-defined parameter \code{n} as number of clusters.
+   Then, they are transformed to DIN99 space,and clustered using either
+   hierarchical or k-means clustering, using the user-defined parameter \code{n}
+   as number of clusters. Another method that does not use the reference space
+   is "kmeans_classic", which applies k-means directly to the image (after
+   the RGB values have been transformed to DIN99 space).
    Within each cluster, the top \code{sub} colors (as defined by the analysis)
    are kept. The palette is then optionally ordered according to one of hue,
    chroma, or luminance.
