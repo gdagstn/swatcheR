@@ -12,10 +12,12 @@ RoxygenNote: 7.1.2
 Imports:
     colorspace,
     farver,
+    igraph,
     ggplot2,
     jpeg,
     methods,
     png,
+    princurve,
     reshape2
 Depends: 
     R (>= 2.10)

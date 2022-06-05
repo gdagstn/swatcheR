@@ -698,3 +698,99 @@ deltaE2000mod <- function (Lab1, Lab2) {
   return(res)
 }
 
+
+#' Get kNN graph
+#'
+#' Builds a k-nearest neighbor graph from a set of points
+#'
+#' @param coords matrix with point coordinates
+#' @param k number of nearest neighbors
+#'
+#' @return an \code{igraph} graph object with the k-NN graph
+#'
+#' @details Internal use only. Nothing fancy, just a brute force
+#'     barebones implementation of k-NN.
+#'
+#' @importFrom igraph simplify graph_from_data_frame
+#' @importFrom stats dist
+
+
+getKNN <- function(coords, k = 2) {
+
+  distmat = as.matrix(dist(coords))
+  diag(distmat) = NA
+
+  index = t(apply(distmat, 1, function(x) order(x)[seq_len(k)]))
+  indices = list()
+  for(i in seq_len(nrow(index))) {
+    indices[[i]] <- list()
+    for(j in seq_len(ncol(index))){
+      indices[[i]][[j]] <- c(index[i,1], index[i,j])
+    }
+  }
+
+  index_nn = as.data.frame(do.call(rbind, lapply(indices, function(x) do.call(rbind, x))))
+  g = simplify(graph_from_data_frame(index_nn, directed = FALSE))
+  return(g)
+}
+
+#' Get continuous palettes
+#'
+#' Generates continuous palettes from a categorical palette
+#'
+#' @param pal a hex code vector with the palette
+#' @param n a numeric, the final number of palette colors. Default is 10
+#' @param tries numeric, how many times should the algorithm run?
+#' @param plot logical, should the resulting palettes be plotted?
+#'
+#' @return a nested list of length \code{tries}, each element containing:
+#' \itemize{
+#'    \item{the original palette in DIN99 space (\code{original_space})}
+#'    \item{the palette space after clustering (\code{palette_space})}
+#'    \item{the principal curve (\code{principal_curve})}
+#'    \item{the curve colors (\code{principal_curve_rgb})}
+#'    \item{the final palette (\code{palette})}
+#'    }
+#'
+#' @details todo
+#'
+#' @importFrom igraph subgraph components shortest_paths mst distances
+#' @importFrom stats kmeans
+#' @importFrom princurve principal_curve
+#' @importFrom grDevices colorRampPalette rgb
+#' @importFrom methods as
+#' @importFrom colorspace LAB coords swatchplot
+
+getContinuousPalette <- function(pal, n = 10, tries = 1, plot = TRUE) {
+
+  palettes = list()
+
+  for(i in seq_len(tries)){
+
+    cielab = coords(as(hex2RGB(pal), "LAB"))
+    din = CIELabtoDIN99mod(cielab[,1], cielab[,2], cielab[,3])
+    dink = kmeans(din, centers = round(sqrt(length(pal))))
+
+    g = getKNN(dink$centers, k = 2)
+    comp = which.max(table(components(g)$membership))
+    vkeep = names(components(g)$membership[components(g)$membership == comp])
+    g = subgraph(g, vids = vkeep)
+
+    startfrom = which.max(rowSums(distances(g)))
+    path_chosen = which.max(lengths(shortest_paths(mst(g), from = startfrom, algorithm = "bellman-ford")$vpath))
+    path_vs = as.numeric(names(shortest_paths(mst(g), from = startfrom, algorithm = "bellman-ford")$vpath[[path_chosen]]))
+
+    keep = din[dink$cluster %in% as.numeric(path_vs),]
+    pcur = principal_curve(keep)
+    pcur_colors = coords(as(LAB(DIN99toCIELabmod(pcur$s[,1], pcur$s[,2], pcur$s[,3])), "sRGB"))
+    pcur_colors[pcur_colors > 1] = 1
+    pcur_colors[pcur_colors < 0] = 0
+    pcur_rgb = rgb(pcur_colors)[pcur$ord]
+
+    palettes[[i]] = list("original_space" = din,  "palette_space" = keep, "principal_curve" = pcur, "principal_curve_rgb" = pcur_rgb,
+                         "palette" = colorRampPalette(pcur_rgb)(n))
+  }
+
+  if(plot) swatchplot(lapply(palettes, function(x) unlist(x$palette)))
+  return(palettes)
+}
