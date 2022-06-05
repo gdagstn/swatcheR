@@ -153,6 +153,8 @@ The available options at the moment are CIELab ("LAB") and DIN99 ("DIN99").
 - Thomas Lin Pedersen, Berendea Nicolae, Romain François for the `farver` package
 - Simon Urbanek for the `png` and `jpeg` packages
 - Hadley Wickham for the `reshape2` package
+- the `igraph` package [authors](https://cran.r-project.org/web/packages/igraph/AUTHORS)
+- Trevor Hastie Andreas Weingessel, Kurt Hornik, Henrik Bengtsson, and Robrecht Cannoodt for the `princurve` package
 
 
 
