@@ -36,11 +36,13 @@ The approach works as follows:
 
 <img width="880" alt="Screenshot 2022-06-05 at 2 10 51 PM" src="https://user-images.githubusercontent.com/21171362/172037835-bb66539c-a905-4152-8a7a-0a62972ffcfc.png">
 
+_San Matteo e l'Angelo (Saint Matthew and the Angel)_, Caravaggio, 1602
+
 The swatch will then have **k * m** colors, where **k** is the number of *clusters* (most diverse colors) and **m** is the number of *most representative colors per cluster* (hues within the cluster). This means that looking for 20 colors with k = 20 and m = 1 will yield a different result than k = 10 and m = 2, although the final number of colors will be the same; k = 20 gives more separated colors (as it will effectively partition the DIN99 space in 20 separate clusters), whereas k = 10 and m = 2 will select color couples from each cluster. The difference may be subtle in many cases but it allows users to fine tune the process.
 
 <img width="1147" alt="Screenshot 2022-06-05 at 2 24 24 PM" src="https://user-images.githubusercontent.com/21171362/172038264-710610a1-f9e3-45cf-9cd2-5be370a46a58.png">
 
-
+_Wheat Field with Cypresses_, Vincent Van Gogh, 1889
 
 This procedure is quite fast mainly because of two tricks:
 
@@ -74,8 +76,9 @@ plotWithPal(link = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Va
 
 <img width="517" alt="Screenshot 2022-06-05 at 2 29 01 PM" src="https://user-images.githubusercontent.com/21171362/172038396-b13347d7-d1a5-4f4e-9efd-02540dfa6115.png">
 
+_The Starry Night_, Vincent Van Gogh, 1889
 
-As you can see the palette changes slightly, because the k-means search has a stochastic component to it, although this is mitigated by using 100 restarts.
+The palette changes slightly, because the k-means search has a stochastic component to it, although this is mitigated by using 100 restarts.
 
 The user can optionally decide whether to apply filters to color brightness (luminance) and saturation (chroma), and how much these filters remove in proportion to the luminance/chroma value distribution. 
 
@@ -88,6 +91,9 @@ There are some use cases in which HC outperforms k-means, and vice versa. For in
 If there are many different colors, k-means can have a higher range to capture small nuances:
 
 <img width="1155" alt="Screenshot 2022-06-05 at 2 27 28 PM" src="https://user-images.githubusercontent.com/21171362/172038355-c00839a0-b631-4533-8a25-824319755957.png">
+
+_I bari (Cardsharps)_, Caravaggio, 1594
+
 
 There are many parameteres that can be tuned to generate a satistfying palette.
 
