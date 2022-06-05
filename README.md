@@ -99,6 +99,10 @@ There are many parameteres that can be tuned to generate a satistfying palette.
 
 ## Different reference spaces
 
+<img width="503" alt="Screenshot 2022-06-05 at 3 06 44 PM" src="https://user-images.githubusercontent.com/21171362/172039666-dfd2e000-237f-432c-ad7c-e35c4babf9a2.png">
+
+A 3D representation of summary colors and their coordinates in the `din_4096` reference space, included in the package.
+
 The package comes with a reference space built on 4096 clusters in DIN99 space. However, if you want to use a different reference space, you can build your own using `makeReferenceSpace()`:
 
 ```
