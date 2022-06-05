@@ -307,8 +307,9 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
 
   if(!method %in% c("HC", "kmeans", "kmeans_classic")) stop("Unknown method.")
 
+ if(is.null(analysis)) {
   if(is.null(m)){
-    if(is.null(file_path) & is.null(link)) stop("A URL (link) or a file path (file_path) must be specified.")
+    if(is.null(file_path) & is.null(link)) stop("A URL (link), file path (file_path), raster (m) or analysis must be specified.")
 
     if(!is.null(link) & is.null(file_path)) {
       temp = tempfile()
@@ -328,13 +329,15 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
         m = readPNG(file_path, native = TRUE)
       }
     }
+   }
   }
 
   if(method == "kmeans_classic") {
 
     m2 = melt(matrix(as.numeric(m), nrow = attr(m, "dim")[1], byrow = TRUE))
     m2$hex <- hexcols <- decode_native(m2$value)
-    din = CIELabtoDIN99mod(coords(as(hex2RGB(m2$hex), "LAB")))
+    labspace = coords(as(hex2RGB(m2$hex), "LAB"))
+    din = CIELabtoDIN99mod(labspace[,1], labspace[,2], labspace[,3])
 
     kk = suppressWarnings(kmeans(din, centers = n))
 
@@ -378,7 +381,7 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
 
   } else if(method != "kmeans_classic") {
 
-    analysis = analyzePictureCol(m = m, reference_space = reference_space, keep_extremes = keep_extremes)
+    if(is.null(analysis)) analysis = analyzePictureCol(m = m, reference_space = reference_space, keep_extremes = keep_extremes)
 
     sorted = sort(analysis, decreasing = TRUE)[seq_len(min(ntop, sum(analysis > 0)))]
 
