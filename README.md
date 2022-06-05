@@ -1,7 +1,7 @@
 <img src="https://user-images.githubusercontent.com/21171362/171850532-ded8fd04-6233-4f68-b278-2a23bf1ee495.png" align="right" alt="" width="150" />
 
 # swatcheR
-Fast automatic selection of color palettes from images
+Fast automatic selection of color swatches from images
 
 # Installation
 
@@ -52,7 +52,29 @@ This procedure is quite fast mainly because of two tricks:
 
 The other positive aspect is that if you are using `swatcher` to analyze paintings _en masse_, they will all be assigned to a shared feature space of 4096 colors, making other types of analyses - such as embedding in a reduced space - feasible. Identifying swatches using `swatcher` also amounts to some sort of "feature selection" for statistical analyses of color in paintings. 
 
+## What about continuous palettes?
 
+It is notoriously hard to interpolate colors beyond a certain range of hue. For a given categorical palette, in fact, there can be several different continuous palettes that can be automatically generated among a set of colors. `swatcheR` tries to find good continuous palettes borrowing some tricks from computational geometry and graph theory.
+
+- First, a large (n > 100) palette is used as input, and projected in DIN99 space. 
+- The palette is clustered via k-means (~40 clusters)
+- a k-nearest neighbor graph is built on these clusters, using k = 2 neighbors
+- only the largest component of the graph is retained, and a minimum spanning tree is calculated for the subgraph
+- the longest path on the MST of the subgraph is retained
+- a principal curve is fit in DIN99 space using only colors belonging to the clusters included in the longest MST path
+- principal curve coordinates are converted to colors.
+
+The clustering step introduces a high level of randomness, which in this case is desirable, as many different continuous swatches can be built from a categorical one. 
+
+This is the result of 12 random swatches from Caravaggio's _I bari_:
+
+<img width="500" alt="Screenshot 2022-06-06 at 1 37 48 AM" src="https://user-images.githubusercontent.com/21171362/172063105-f524933b-17ef-4159-9de6-e9ee54a7d234.png">
+
+_I bari (Cardsharps)_, Caravaggio, 1594
+
+<img width="500" alt="Screenshot 2022-06-06 at 1 36 34 AM" src="https://user-images.githubusercontent.com/21171362/172063070-cd6dc50f-b00c-4fbd-b2ee-939109215ad8.png">
+
+As you can see the yellow tones tend to appear frequently, but all swatches are different. 
 
 # Usage
 
@@ -67,7 +89,7 @@ head(analysis)
 #550704 #170B04 #761B04 #1B1C04 #0E2404 #5D5F04 
      17   19676      47    8096    2476     698 
     
-pal = getPalette(analysis, n = 20, sub = 1)
+pal = getPalette(analysis = analysis, n = 20, sub = 1)
 pal
  [1] "#BCC37C" "#B7BB9F" "#BCA834" "#94A9A4" "#BD9D23" "#8799B5" "#8C896F" "#758293" "#5B7593" "#5F7678" "#4A6593" "#596B2E" "#365398" "#344876"
 [15] "#4C4519" "#414137" "#2E413B" "#443527" "#2F3539" "#1C2A5C"
@@ -83,6 +105,16 @@ The palette changes slightly, because the k-means search has a stochastic compon
 
 The user can optionally decide whether to apply filters to color brightness (luminance) and saturation (chroma), and how much these filters remove in proportion to the luminance/chroma value distribution. 
 
+For continuous palettes `getContinuousPalette()` can be used specifying the number of resulting palette (`tries`). It is a good idea to first generate a large palette:
+
+```
+pal = getPalette(analysis = analysis, n = 50, sub = 3)
+
+cont_pal = getContinuousPalette(pal, tries = 5)
+
+```
+<img width="630" alt="Screenshot 2022-06-06 at 1 42 00 AM" src="https://user-images.githubusercontent.com/21171362/172063266-9ec9fa88-54ad-465d-bd7c-e6531cf94956.png">
+
 ## Hierachical clustering or k-means? 
 
 There are some use cases in which HC outperforms k-means, and vice versa. For instance, if your picture has few colors, HC is the best choice:
@@ -90,10 +122,6 @@ There are some use cases in which HC outperforms k-means, and vice versa. For in
 <img width="764" alt="Screenshot 2022-06-05 at 2 21 02 PM" src="https://user-images.githubusercontent.com/21171362/172038112-beddeba8-662e-47ab-9d5e-a633a3fa3574.png">
 
 If there are many different colors, k-means can have a higher range to capture nuances:
-
-<img width="1155" alt="Screenshot 2022-06-05 at 2 27 28 PM" src="https://user-images.githubusercontent.com/21171362/172038355-c00839a0-b631-4533-8a25-824319755957.png">
-
-_I bari (Cardsharps)_, Caravaggio, 1594
 
 <img width="1077" alt="Screenshot 2022-06-05 at 8 00 25 PM" src="https://user-images.githubusercontent.com/21171362/172049432-e384c45f-446a-43cb-8b9d-64f514d7b524.png">
 
