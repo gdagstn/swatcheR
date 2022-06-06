@@ -50,6 +50,8 @@ This procedure is quite fast mainly because of two tricks:
 - the use of a pre-clustered reduced color space greatly reduces the feature space and speeds up the lookup 
 - there is no need to optimize the palette by randomization, as the projection in perceptual spaces space followed by clustering affords a better color separation
 
+However, there is a very naive option to optimize the palette that re-runs k-means several times (up to 100) and keeps the palette whose minimum color difference is above a user-defined threshold.
+
 The other positive aspect is that if you are using `swatcher` to analyze paintings _en masse_, they will all be assigned to a shared feature space of 4096 colors, making other types of analyses - such as embedding in a reduced space - feasible. Identifying swatches using `swatcher` also amounts to some sort of "feature selection" for statistical analyses of color in paintings. 
 
 ## What about continuous palettes?
