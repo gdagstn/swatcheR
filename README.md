@@ -18,7 +18,7 @@ The idea is not new: the `paletter` [package](https://github.com/AndreaCirilloAC
 
 The approach works as follows:
 
-- First, the RGB cube (made of 255^3 colors) is transformed to LAB and then DIN99 color spaces. These spaces are perceptually uniform, which means that the Euclidean distance between colors in these spaces reflects better how humans perceive different colors. 
+- First, the RGB cube (made of 255^3 colors) is transformed to LAB and then DIN99 color spaces. These spaces are perceptually uniform, which means that the Euclidean distance between colors in these spaces reflects better how humans perceive different colors. This is good for working with Euclidean-distance based methods such as k-means clustering and hierachical clustering.
 
 -  The DIN99 space is then summarized using k-means clustering, setting k = 4096 (square root of 256^3). This means that every color with an RGB specification can be assigned to a cluster, and therefore to a cluster centroid; rounding the coordinates of a cluster centroid gives a mean color for each cluster. This summarized space and its clustering results are kept constant as they only need to be created once, and are distributed in the package.
 
