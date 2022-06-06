@@ -151,7 +151,7 @@ The available options at the moment are CIELab ("LAB") and DIN99 ("DIN99").
 - Andrea Cirillo for the `paletter` package
 - Ross Ihaka, Paul Murrell, Kurt Hornik, Jason C. Fisher, Reto Stauffer, Claus O. Wilke, Claire D. McWhite, Achim Zeileis for the `colorspace` package
 - Jose Gama for the `colorscience` package
-- Hadley Wickham, Winston Chang, Lionel Henry, Thomas Lin Pedesen, Kohske Takahashi, Claus Wilke, Kara Woo, and Hiroaki Yutani for the `ggplot2` package
+- Hadley Wickham, Winston Chang, Lionel Henry, Thomas Lin Pedersen, Kohske Takahashi, Claus Wilke, Kara Woo, and Hiroaki Yutani for the `ggplot2` package
 - Thomas Lin Pedersen, Berendea Nicolae, Romain François for the `farver` package
 - Simon Urbanek for the `png` and `jpeg` packages
 - Hadley Wickham for the `reshape2` package
