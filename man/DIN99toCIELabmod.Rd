@@ -21,9 +21,8 @@ a matrix with the same number of rows as the length of the vectors in
 Transform L99o, a99o, b99o to L, a, b
 }
 \details{
-Internal use only. Slightly modified to take vectors and not single
-    values as input. Originally present in the \code{colorscience} package
-    by Jose Gama.
+Internal use only. Slightly modified for vectorization.
+    Originally present in the \code{colorscience} package by Jose Gama.
 }
 \references{
 DIN99 to CIELAB coordinates, 2014 http://de.wikipedia.org/w/index.php?title=Diskussion:DIN99-Farbraum

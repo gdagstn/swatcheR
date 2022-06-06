@@ -16,6 +16,8 @@ plotWithPal(
   filter_chroma = NULL,
   filter_sd = 1.5,
   order = "L",
+  optimize = FALSE,
+  DE2000_target = 4,
   bg_color = "white",
   keep_extremes = TRUE,
   title = NULL
@@ -57,6 +59,12 @@ deviations above/below which filters are applied. Default is 1.5.}
 should be ordered. One of "H" (hue), "C" (chroma), "L" (luminance). The
 final order has only aesthetic purposes and does not change the palette.
 Default is "L".}
+
+\item{optimize}{logical, should the palette be optimized for maximal difference?
+Default is FALSE}
+
+\item{DE2000_target}{numeric, the target minimum color difference for optimization.
+Default is 4. Only relevant if \code{optimize} is TRUE.}
 
 \item{bg_color}{the background color (as named color, hexadecimal or rgb).
 Default is "white".}

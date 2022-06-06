@@ -18,7 +18,9 @@ getPalette(
   filter_chroma = NULL,
   filter_sd = 1.5,
   order = "L",
-  keep_extremes = TRUE
+  keep_extremes = TRUE,
+  optimize = FALSE,
+  DE2000_target = 4
 )
 }
 \arguments{
@@ -71,12 +73,17 @@ final order has only aesthetic purposes and does not change the palette.
 Default is "L".}
 
 \item{keep_extremes}{logical, passed to \code{analyzePictureCol}}
+
+\item{optimize}{logical, should the palette be optimized for a minimum
+color difference (specified by \code{DE2000_target})? Default is FALSE.}
+
+\item{DE2000_target}{the minimum DeltaE2000 difference for optimization.}
 }
 \value{
 a character vector of hexadecimal color values of length \code{n} * \code{sub}.
 }
 \description{
-Automatically finds a color palette from a color analysis
+Automatically finds a color swatch from a color analysis
 }
 \details{
 This function performs several operations on a color analysis result
@@ -90,8 +97,13 @@ This function performs several operations on a color analysis result
    is "kmeans_classic", which applies k-means directly to the image (after
    the RGB values have been transformed to DIN99 space).
    Within each cluster, the top \code{sub} colors (as defined by the analysis)
-   are kept. The palette is then optionally ordered according to one of hue,
-   chroma, or luminance.
+   are kept. Optionally, the palette can be optimized by running the same procedure
+   iteratively until a minimum DeltaE2000 color difference is reached. Optimization
+   is stopped after 100 unsuccessful attempts, at which point it is advisable to
+   lower the minimum difference. It is important to note that the bigger the
+   palette, the lowest the minimum difference between colors will be.
+   The palette is then optionally ordered according to one of hue, chroma, or
+   luminance.
 }
 \author{
 Giuseppe D'Agostino

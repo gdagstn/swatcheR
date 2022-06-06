@@ -21,3 +21,6 @@ Builds a k-nearest neighbor graph from a set of points
 Internal use only. Nothing fancy, just a brute force
     barebones implementation of k-NN.
 }
+\author{
+Giuseppe D'Agostino
+}

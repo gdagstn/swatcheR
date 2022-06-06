@@ -122,9 +122,8 @@ CIELabtoDIN99mod <- function (L, a, b) {
 #' @return a matrix with the same number of rows as the length of the vectors in
 #'     LAB coordinates.
 #'
-#' @details Internal use only. Slightly modified to take vectors and not single
-#'     values as input. Originally present in the \code{colorscience} package
-#'     by Jose Gama.
+#' @details Internal use only. Slightly modified for vectorization.
+#'     Originally present in the \code{colorscience} package by Jose Gama.
 #'
 #' @author Jose Gama, modified by Giuseppe D'Agostino
 #'
@@ -221,7 +220,6 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
   m2$cluster = reference_space[cbind(rgb_values[,1], rgb_values[,2], rgb_values[,3])]
 
   if(keep_extremes) {
-
     for(i in c("#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF","#00FFFF",
                "#FF00FF", "#FFFF00")) {
       m2$cluster[m2$hex == i] = encode_native(i)
@@ -235,7 +233,7 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 
 #' Get a summary palette
 #'
-#' Automatically finds a color palette from a color analysis
+#' Automatically finds a color swatch from a color analysis
 #'
 #' @param file_path a character indicating a path to a .JPG or .PNG file.
 #'     Either \code{file_path},  \code{link} or  \code{m} must be specified.
@@ -273,6 +271,9 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'     final order has only aesthetic purposes and does not change the palette.
 #'     Default is "L".
 #' @param keep_extremes logical, passed to \code{analyzePictureCol}
+#' @param optimize logical, should the palette be optimized for a minimum
+#'     color difference (specified by \code{DE2000_target})? Default is FALSE.
+#' @param DE2000_target the minimum DeltaE2000 difference for optimization.
 #'
 #' @return a character vector of hexadecimal color values of length \code{n} * \code{sub}.
 #'
@@ -287,14 +288,19 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'    is "kmeans_classic", which applies k-means directly to the image (after
 #'    the RGB values have been transformed to DIN99 space).
 #'    Within each cluster, the top \code{sub} colors (as defined by the analysis)
-#'    are kept. The palette is then optionally ordered according to one of hue,
-#'    chroma, or luminance.
+#'    are kept. Optionally, the palette can be optimized by running the same procedure
+#'    iteratively until a minimum DeltaE2000 color difference is reached. Optimization
+#'    is stopped after 100 unsuccessful attempts, at which point it is advisable to
+#'    lower the minimum difference. It is important to note that the bigger the
+#'    palette, the lowest the minimum difference between colors will be.
+#'    The palette is then optionally ordered according to one of hue, chroma, or
+#'    luminance.
 #'
 #' @author Giuseppe D'Agostino
 #'
-#' @importFrom colorspace hex2RGB LAB RGB polarLUV coords
+#' @importFrom colorspace hex2RGB coords
 #' @importFrom grDevices col2rgb rgb
-#' @importFrom stats kmeans mad median sd
+#' @importFrom stats kmeans
 #' @importFrom methods as
 #'
 #' @export
@@ -302,7 +308,8 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
                       reference_space = NULL, method = "HC", n = 10, sub = 1,
                       ntop = 2000, filter_luminance = "both", filter_chroma = NULL,
-                      filter_sd = 1.5, order = "L", keep_extremes = TRUE) {
+                      filter_sd = 1.5, order = "L", keep_extremes = TRUE,
+                      optimize = FALSE, DE2000_target = 4) {
 
 
   if(!method %in% c("HC", "kmeans", "kmeans_classic")) stop("Unknown method.")
@@ -344,31 +351,14 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
     m2$cluster = kk$cluster
 
     if(!is.null(filter_luminance)) {
-
-      pal_RGB = hex2RGB(hexcols)
-      luminance = coords(as(pal_RGB, "polarLUV"))[,"L"]
-
-      if(filter_luminance == "both") {
-        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))) & luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
-      } else if(filter_luminance == "bright") {
-        luminance_pick = which(luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
-      } else if(filter_luminance == "dark") {
-        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))))
-      }
+     luminance_pick = filterColors(hexcols, on = "L",
+                                  type = filter_luminance, filter_sd = filter_sd)
     } else luminance_pick = seq_len(length(hexcols))
 
     if(!is.null(filter_chroma)) {
+      chroma_pick = filterColors(hexcols, on = "C",
+                                    type = filter_chroma, filter_sd = filter_sd)
 
-      pal_RGB = hex2RGB(hexcols)
-      chroma = coords(as(pal_RGB, "polarLUV"))[,"C"]
-
-      if(filter_chroma == "both") {
-        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))) & chroma >= (median(chroma) - (filter_sd * mad(chroma))))
-      } else if(filter_chroma == "high") {
-        chroma_pick = which(chroma >= (median(chroma) - (filter_sd * mad(chroma))))
-      } else if(filter_chroma == "low") {
-        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))))
-      }
     } else chroma_pick = seq_len(length(hexcols))
 
     hexcols = hexcols[intersect(luminance_pick, chroma_pick)]
@@ -388,31 +378,14 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
     hexcols = names(sorted)
 
     if(!is.null(filter_luminance)) {
-
-      pal_RGB = hex2RGB(hexcols)
-      luminance = coords(as(pal_RGB, "polarLUV"))[,"L"]
-
-      if(filter_luminance == "both") {
-        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))) & luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
-      } else if(filter_luminance == "bright") {
-        luminance_pick = which(luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
-      } else if(filter_luminance == "dark") {
-        luminance_pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))))
-      }
+      luminance_pick = filterColors(hexcols, on = "L",
+                                    type = filter_luminance, filter_sd = filter_sd)
     } else luminance_pick = seq_len(length(hexcols))
 
     if(!is.null(filter_chroma)) {
+      chroma_pick = filterColors(hexcols, on = "C",
+                                 type = filter_chroma, filter_sd = filter_sd)
 
-      pal_RGB = hex2RGB(hexcols)
-      chroma = coords(as(pal_RGB, "polarLUV"))[,"C"]
-
-      if(filter_chroma == "both") {
-        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))) & chroma >= (median(chroma) - (filter_sd * mad(chroma))))
-      } else if(filter_chroma == "high") {
-        chroma_pick = which(chroma >= (median(chroma) - (filter_sd * mad(chroma))))
-      } else if(filter_chroma == "low") {
-        chroma_pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))))
-      }
     } else chroma_pick = seq_len(length(hexcols))
 
     hexcols = hexcols[intersect(luminance_pick, chroma_pick)]
@@ -420,30 +393,25 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
     sorted = sorted[hexcols]
     sorted = sort(sorted, decreasing = TRUE)
 
-    if(method == "kmeans") {
-      cielab = coords(as(RGB(t(col2rgb(hexcols))[,1]/255, t(col2rgb(hexcols))[,2]/255, t(col2rgb(hexcols))[,3]/255), "LAB"))
-      din =  CIELabtoDIN99mod(L = cielab[,1], a = cielab[,2], b = cielab[,3])
-      kdin = kmeans(din, centers = min(c(n, nrow(din) - 1)), nstart = 100)
-      ks_sorted = data.frame("pixels" = as.numeric(sorted), "cluster" = kdin$cluster, row.names = names(sorted))
-
-    } else if(method == "HC"){
-      ks_sorted = hClusterPalette(palette = hexcols, n = n)
-      ks_sorted$pixels =  analysis[ks_sorted$col]
-      rownames(ks_sorted) = ks_sorted$col
-      ks_sorted$col = NULL
-      ks_sorted = ks_sorted[,2:1]
-    }
-
-    pal_kdin = as.character(unlist(lapply(split(ks_sorted, ks_sorted$cluster), function(x) {
-      if(nrow(x) >= sub) {
-        return(rownames(x)[seq_len(sub)])
-      } else {
-        return(rownames(x))}}), use.names = FALSE))
+    pal_kdin = clusterKDIN(sorted = sorted, n = n, sub = sub, method = method)
   }
 
-  if(length(pal_kdin) < n * sub) {
-    pal_kdin = c(pal_kdin, rep("#00000000", (n * sub)-length(pal_kdin)))
-  }
+    if(optimize) {
+      counter = 0
+      pal_kdin_temp = pal_kdin
+      to_optimize = min(getPaletteDistances(pal_kdin_temp)$DE2000)
+      while(to_optimize < DE2000_target) {
+        pal_kdin_temp = clusterKDIN(sorted = sorted, n = n, sub = sub, method = method)
+        to_optimize = min(getPaletteDistances(pal_kdin_temp)$DE2000)
+        counter = counter + 1
+        if(counter > 99) {
+          message(paste0("Failed to optimize in ", counter, " iterations. Try reducing the DE2000 target."))
+          break()
+         }
+        }
+        if(counter <= 99) message(paste0("Optimized in ", counter, " iterations."))
+        pal_kdin = pal_kdin_temp
+      }
 
   if(!is.null(order)) {
     colz = hex2RGB(pal_kdin)
@@ -485,6 +453,10 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
 #'     should be ordered. One of "H" (hue), "C" (chroma), "L" (luminance). The
 #'     final order has only aesthetic purposes and does not change the palette.
 #'     Default is "L".
+#' @param optimize logical, should the palette be optimized for maximal difference?
+#'     Default is FALSE
+#' @param DE2000_target numeric, the target minimum color difference for optimization.
+#'     Default is 4. Only relevant if \code{optimize} is TRUE.
 #' @param bg_color the background color (as named color, hexadecimal or rgb).
 #'     Default is "white".
 #' @param keep_extremes logical, passed to \code{analyzePictureCol} if needed.
@@ -511,7 +483,8 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
 plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space = NULL,
                        method = "HC", n = 20, sub = 1, filter_luminance = "both",
                        filter_chroma = NULL, filter_sd = 1.5, order = "L",
-                       bg_color = "white", keep_extremes = TRUE, title = NULL){
+                       optimize = FALSE, DE2000_target = 4, bg_color = "white",
+                       keep_extremes = TRUE, title = NULL){
 
   if(is.null(m)){
 
@@ -537,7 +510,8 @@ plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space 
                    method = method, n = n, sub = sub,
                    filter_luminance = filter_luminance,
                    filter_chroma = filter_chroma, filter_sd = filter_sd,
-                   order = order)
+                   order = order, optimize = optimize,
+                   DE2000_target = DE2000_target)
 
   res = dim(m)[2:1]
 
@@ -591,12 +565,15 @@ plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space 
 #' @importFrom methods as
 
 getPaletteDistances = function(palette) {
+
   paletteLAB = as(hex2RGB(palette), "LAB")
+
   dists = expand.grid(seq_len(length(palette)), seq_len(length(palette)))
   dists = dists[dists[,1] != dists[,2],]
   dists$Col1 = palette[dists[,1]]
   dists$Col2 = palette[dists[,2]]
   dists$DE2000 = deltaE2000mod(coords(paletteLAB)[dists$Var1,], coords(paletteLAB)[dists$Var2,])
+
   return(dists)
 }
 
@@ -617,11 +594,14 @@ getPaletteDistances = function(palette) {
 #' @importFrom stats hclust dist cutree as.dist
 
 hClusterPalette = function(palette, n) {
+
   df = getPaletteDistances(palette)
   distmat = as.dist(acast(df, formula = Var1 ~ Var2, value.var = "DE2000"))
   hc = hclust(distmat)
   clusters = cutree(hc, k = n)
+
   clusters_df = data.frame("col" = palette[as.numeric(names(clusters))], "cluster" = clusters)
+
   return(clusters_df)
 }
 
@@ -634,9 +614,8 @@ hClusterPalette = function(palette, n) {
 #'
 #' @return a vector of DeltaE2000 color distances
 #'
-#' @details Internal use only. Slightly modified to take vectors and not single
-#'     values as input. Originally present in the \code{colorscience} package
-#'     by Jose Gama.
+#' @details Internal use only. Slightly modified for vectorisation.
+#'     Originally present in the \code{colorscience} package by Jose Gama.
 #'
 #' @author Jose Gama, modified by Giuseppe D'Agostino
 #'
@@ -711,6 +690,8 @@ deltaE2000mod <- function (Lab1, Lab2) {
 #' @details Internal use only. Nothing fancy, just a brute force
 #'     barebones implementation of k-NN.
 #'
+#' @author Giuseppe D'Agostino
+#'
 #' @importFrom igraph simplify graph_from_data_frame
 #' @importFrom stats dist
 
@@ -754,6 +735,8 @@ getKNN <- function(coords, k = 2) {
 #'
 #' @details todo
 #'
+#' @author Giuseppe D'Agostino
+#'
 #' @importFrom igraph subgraph components shortest_paths mst distances
 #' @importFrom stats kmeans
 #' @importFrom princurve principal_curve
@@ -793,4 +776,110 @@ getContinuousPalette <- function(pal, n = 10, tries = 1, plot = TRUE) {
 
   if(plot) swatchplot(lapply(palettes, function(x) unlist(x$palette)))
   return(palettes)
+}
+
+
+#' K clusters in DIN99 space
+#'
+#' Clusters a color palette in DIN99 color space returning k clusters
+#'
+#' @param sorted picture analysis from \code{analyzePictureCol}
+#' @param n a numeric, the final number of clusters
+#' @param sub a numeric, most abundant colors per cluster
+#' @param method a character, one of "kmeans" or "HC"
+#'
+#' @return a palette with most abundant and separated colors
+#'
+#'
+#' @details Internal use only.
+#'
+#' @author Giuseppe D'Agostino
+#'
+#' @importFrom colorspace coords hex2RGB
+#' @importFrom stats kmeans
+#' @importFrom grDevices col2rgb
+#' @importFrom methods as
+
+clusterKDIN <- function(sorted, n, sub, method){
+
+  hexcols = names(sorted)
+
+  if(method == "kmeans") {
+    cielab = coords(as(hex2RGB(hexcols), "LAB"))
+
+    din =  CIELabtoDIN99mod(L = cielab[,1], a = cielab[,2], b = cielab[,3])
+    kdin = kmeans(din, centers = min(c(n, nrow(din) - 1)), nstart = 5)
+    ks_sorted = data.frame("pixels" = as.numeric(sorted),
+                           "cluster" = kdin$cluster, row.names = names(sorted))
+
+  } else if(method == "HC"){
+    ks_sorted = hClusterPalette(palette = hexcols, n = n)
+    ks_sorted$pixels =  sorted[ks_sorted$col]
+    rownames(ks_sorted) = ks_sorted$col
+    ks_sorted$col = NULL
+    ks_sorted = ks_sorted[,2:1]
+  }
+
+  pal_kdin = as.character(unlist(lapply(split(ks_sorted, ks_sorted$cluster), function(x) {
+    if(nrow(x) >= sub) {
+      return(rownames(x)[seq_len(sub)])
+    } else {
+      return(rownames(x))}}), use.names = FALSE))
+
+  if(length(pal_kdin) < n * sub) {
+    pal_kdin = c(pal_kdin, rep("#00000000", (n * sub)-length(pal_kdin)))
+  }
+
+  return(pal_kdin)
+}
+
+
+#' Filter colors
+#'
+#' Filters colors based on Luminace or Chroma
+#'
+#' @param colors hex code vector of colors
+#' @param on character, one of "L" (luminance) or "C" (chroma)
+#' @param type character, one of "dark" or "bright" for "L",
+#'     "high" or "low" for "C", and "both" for either value of \code{on}
+#' @param filter_sd numeric, the number of SD/MAD for filtering
+#'
+#' @return a vector of indices for filtering colors
+#'
+#' @details internal use only.
+#'
+#' @author Giuseppe D'Agostino
+#'
+#' @importFrom colorspace hex2RGB
+#' @importFrom methods as
+#' @importFrom stats sd mad median
+
+filterColors <- function(colors, on, type, filter_sd) {
+
+  pal_RGB = hex2RGB(colors)
+
+  if(on == "L"){
+    luminance = coords(as(pal_RGB, "polarLUV"))[,on]
+    if(type == "both") {
+      pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))) & luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
+    } else if(type == "bright") {
+      pick = which(luminance >= (mean(luminance) - (filter_sd * sd(luminance))))
+    } else if(type == "dark") {
+      pick = which(luminance <= (mean(luminance) + (filter_sd * sd(luminance))))
+    }
+  }
+
+  if(on == "C"){
+    chroma = coords(as(pal_RGB, "polarLUV"))[,on]
+
+    if(type == "both") {
+      pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))) & chroma >= (median(chroma) - (filter_sd * mad(chroma))))
+    } else if(type == "high") {
+      pick = which(chroma >= (median(chroma) - (filter_sd * mad(chroma))))
+    } else if(type == "low") {
+      pick = which(chroma <= (median(chroma) + (filter_sd * mad(chroma))))
+    }
+  }
+
+  return(pick)
 }

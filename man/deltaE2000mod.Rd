@@ -18,9 +18,8 @@ a vector of DeltaE2000 color distances
 Calculates the Delta E (CIE 2000) color difference between two matrices in CIELab space
 }
 \details{
-Internal use only. Slightly modified to take vectors and not single
-    values as input. Originally present in the \code{colorscience} package
-    by Jose Gama.
+Internal use only. Slightly modified for vectorisation.
+    Originally present in the \code{colorscience} package by Jose Gama.
 }
 \references{
 Bruce Justin Lindbloom, 2013 Color Calculator http://www.brucelindbloom.com

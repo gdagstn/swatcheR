@@ -31,3 +31,6 @@ Generates continuous palettes from a categorical palette
 \details{
 todo
 }
+\author{
+Giuseppe D'Agostino
+}
