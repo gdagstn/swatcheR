@@ -5,7 +5,7 @@ Fast automatic selection of color swatches from images
 
 # Installation
 
-You can install `swatcher` through `devtools`:
+You can install `swatcheR` through `devtools`:
 
 ```
 devtools::install_github("gdagstn/swatcheR")
