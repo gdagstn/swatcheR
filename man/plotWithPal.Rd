@@ -17,7 +17,7 @@ plotWithPal(
   filter_sd = 1.5,
   order = "L",
   optimize = FALSE,
-  DE2000_target = 4,
+  DE_target = 4,
   bg_color = "white",
   keep_extremes = TRUE,
   title = NULL
@@ -63,7 +63,7 @@ Default is "L".}
 \item{optimize}{logical, should the palette be optimized for maximal difference?
 Default is FALSE}
 
-\item{DE2000_target}{numeric, the target minimum color difference for optimization.
+\item{DE_target}{numeric, the target minimum color difference for optimization.
 Default is 4. Only relevant if \code{optimize} is TRUE.}
 
 \item{bg_color}{the background color (as named color, hexadecimal or rgb).

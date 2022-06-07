@@ -10,7 +10,7 @@ getPalette(
   m = NULL,
   analysis = NULL,
   reference_space = NULL,
-  method = "HC",
+  method = "kmeans",
   n = 10,
   sub = 1,
   ntop = 2000,
@@ -20,7 +20,7 @@ getPalette(
   order = "L",
   keep_extremes = TRUE,
   optimize = FALSE,
-  DE2000_target = 4
+  DE_target = 4
 )
 }
 \arguments{
@@ -45,7 +45,7 @@ colors in DIN99 space.}
 
 \item{method}{a character specifying the method for clustering:
 "HC" for hierarchical clustering, "kmeans" for k-means clustering, and
-"kmeans_classic" for a legacy implementation. Default is "HC".}
+"kmeans_classic" for a legacy implementation. Default is "kmeans".}
 
 \item{n}{a numeric, the number of major colors (k-means clusters)}
 
@@ -75,9 +75,9 @@ Default is "L".}
 \item{keep_extremes}{logical, passed to \code{analyzePictureCol}}
 
 \item{optimize}{logical, should the palette be optimized for a minimum
-color difference (specified by \code{DE2000_target})? Default is FALSE.}
+color difference (specified by \code{DE_target})? Default is FALSE.}
 
-\item{DE2000_target}{the minimum DeltaE2000 difference for optimization.}
+\item{DE_target}{the minimum DeltaE difference for optimization.}
 }
 \value{
 a character vector of hexadecimal color values of length \code{n} * \code{sub}.
@@ -88,22 +88,34 @@ Automatically finds a color swatch from a color analysis
 \details{
 This function performs several operations on a color analysis result
    to isolate a pre-determined number of the most representative colors in the
-   analysis. First, the analysis results are sorted and the \code{ntop} top colors
+   analysis.
+
+   First, the analysis results are sorted and the \code{ntop} top colors
    are retained; then they are optionally transformed to polarLUV coordinates
    (i.e. HCL) and filtered based on the distribution of luminance and/or chroma.
+
+
    Then, they are transformed to DIN99 space,and clustered using either
-   hierarchical or k-means clustering, using the user-defined parameter \code{n}
+   k-means or hierarchical clustering, using the user-defined parameter \code{n}
    as number of clusters. Another method that does not use the reference space
    is "kmeans_classic", which applies k-means directly to the image (after
    the RGB values have been transformed to DIN99 space).
+
+
    Within each cluster, the top \code{sub} colors (as defined by the analysis)
    are kept. Optionally, the palette can be optimized by running the same procedure
-   iteratively until a minimum DeltaE2000 color difference is reached. Optimization
+   iteratively until a minimum DeltaE color difference is reached. Optimization
    is stopped after 100 unsuccessful attempts, at which point it is advisable to
-   lower the minimum difference. It is important to note that the bigger the
+   lower the minimum difference.
+
+   It is important to note that the bigger the
    palette, the lowest the minimum difference between colors will be.
    The palette is then optionally ordered according to one of hue, chroma, or
    luminance.
+
+   \strong{Note} the choice of clustering algorithm is important. Large pictures
+   will exhaust the memory if using \code{method = "HC"}. Small palettes
+   (e.g. 2-3 colors) are better captured by hierarchical clustering.
 }
 \author{
 Giuseppe D'Agostino

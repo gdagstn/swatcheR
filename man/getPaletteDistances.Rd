@@ -10,7 +10,8 @@ getPaletteDistances(palette)
 \item{palette}{a vector of colors as hexadecimal values}
 }
 \value{
-a \code{data.frame} with color pairs and their DeltaE2000 color difference
+a \code{data.frame} with color pairs and their Delta E (DIN99) color
+   difference, i.e. the Euclidean distance in DIN99 color space.
 }
 \description{
 Calculate pairwise differences between colors in a palette

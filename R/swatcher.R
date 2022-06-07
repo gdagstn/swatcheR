@@ -19,7 +19,7 @@
 #'     RGB triplet the corresponding position in the array is matched with the summary
 #'     color (centroid of the clustering it was included in).
 #'
-#' @note Since the number \code{k} of clusters is usually high (1000-3000) and
+#' @note Since the number \code{k} of clusters is usually high (2000-5000) and
 #'     distances are regularly spaced, the Hartigan-Wong algorithm may not converge
 #'     in Quick-Transfer stage. This will throw a warning, but it does not seem to
 #'     affect the results for this application.
@@ -70,83 +70,6 @@ makeReferenceSpace = function(k = 1000, space = "LAB", verbose = FALSE){
 
   if(verbose) message(paste0("Done."))
   return(final_arr)
-}
-
-#' CIELab to DIN99 transformation
-#'
-#' Transform L, a, b, to L99o, a99o, b99o
-#'
-#' @param L numeric vector of L values
-#' @param a numeric vector of a values
-#' @param b numeric vector of b values
-#'
-#' @return a matrix with the same number of rows as the length of the vectors in
-#'     DIN99 coordinates.
-#'
-#' @details Internal use only. Slightly modified to take vectors and not single
-#'     values as input. Originally present in the \code{colorscience} package
-#'     by Jose Gama.
-#'
-#' @author Jose Gama, modified by Giuseppe D'Agostino
-#'
-#' @references CIELAB to DIN99 coordinates, 2014 http://de.wikipedia.org/w/index.php?title=Diskussion:DIN99-Farbraum
-
-CIELabtoDIN99mod <- function (L, a, b) {
-
-  if(mean(length(L), length(a), length(b)) != length(L)) stop("L, a, and b must have the same length")
-
-  kE <- 1
-  kCH <- 1
-  ang <- 2 * pi/360 * 26
-  L99f <- 100/log(139/100)
-  L99o <- L99f/kE * log(1 + 0.0039 * L)
-  eo <- a * cos(ang) + b * sin(ang)
-  fo <- 0.83 * (b * cos(ang) - a * sin(ang))
-  Go <- sqrt(eo^2 + fo^2)
-  C99o <- log(1 + 0.075 * Go)/(0.0435 * kCH * kE)
-  heofo <- atan2(fo, eo)
-  h99o <- heofo + ang
-  a99o <- C99o * cos(h99o)
-  b99o <- C99o * sin(h99o)
-  cbind(L99o, a99o, b99o)
-}
-
-#' DIN99 to CIELab transformation
-#'
-#' Transform L99o, a99o, b99o to L, a, b
-#'
-#' @param L99o numeric vector of L99o values
-#' @param a99o numeric vector of a99o values
-#' @param b99o numeric vector of b99o values
-#'
-#' @return a matrix with the same number of rows as the length of the vectors in
-#'     LAB coordinates.
-#'
-#' @details Internal use only. Slightly modified for vectorization.
-#'     Originally present in the \code{colorscience} package by Jose Gama.
-#'
-#' @author Jose Gama, modified by Giuseppe D'Agostino
-#'
-#' @references DIN99 to CIELAB coordinates, 2014 http://de.wikipedia.org/w/index.php?title=Diskussion:DIN99-Farbraum
-
-DIN99toCIELabmod <- function (L99o, a99o, b99o) {
-
-  if(mean(length(L99o), length(a99o), length(b99o)) != length(L99o)) stop("L99o, a99o, and b99o must have the same length")
-
-  kE <- 1
-  kCH <- 1
-  ang <- 2 * pi/360 * 26
-  L99f <- 100/log(139/100)
-  L <- (exp(L99o * kE/L99f) - 1)/0.0039
-  h99ef <- atan2(b99o, a99o)
-  heofo <- h99ef - ang
-  C99 <- sqrt(a99o^2 + b99o^2)
-  G <- (exp(0.0435 * kE * kCH * C99) - 1)/0.075
-  e <- G * cos(heofo)
-  f <- G * sin(heofo)
-  a <- (e * cos(ang) - (f/0.83) * sin(ang))
-  b <- (e * sin(ang) + (f/0.83) * cos(ang))
-  cbind(L = L, a = a, b = b)
 }
 
 #' Analyze picture colors
@@ -251,7 +174,7 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'    colors in DIN99 space.
 #' @param method a character specifying the method for clustering:
 #'     "HC" for hierarchical clustering, "kmeans" for k-means clustering, and
-#'     "kmeans_classic" for a legacy implementation. Default is "HC".
+#'     "kmeans_classic" for a legacy implementation. Default is "kmeans".
 #' @param n a numeric, the number of major colors (k-means clusters)
 #' @param sub a numeric, the number o minor colors (top abundant colors per cluster)
 #' @param ntop a numeric, the number of top colors to use for the initial clustering.
@@ -272,29 +195,42 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #'     Default is "L".
 #' @param keep_extremes logical, passed to \code{analyzePictureCol}
 #' @param optimize logical, should the palette be optimized for a minimum
-#'     color difference (specified by \code{DE2000_target})? Default is FALSE.
-#' @param DE2000_target the minimum DeltaE2000 difference for optimization.
+#'     color difference (specified by \code{DE_target})? Default is FALSE.
+#' @param DE_target the minimum DeltaE difference for optimization.
 #'
 #' @return a character vector of hexadecimal color values of length \code{n} * \code{sub}.
 #'
 #' @details This function performs several operations on a color analysis result
 #'    to isolate a pre-determined number of the most representative colors in the
-#'    analysis. First, the analysis results are sorted and the \code{ntop} top colors
+#'    analysis.
+#'
+#'    First, the analysis results are sorted and the \code{ntop} top colors
 #'    are retained; then they are optionally transformed to polarLUV coordinates
 #'    (i.e. HCL) and filtered based on the distribution of luminance and/or chroma.
+#'
+#'
 #'    Then, they are transformed to DIN99 space,and clustered using either
-#'    hierarchical or k-means clustering, using the user-defined parameter \code{n}
+#'    k-means or hierarchical clustering, using the user-defined parameter \code{n}
 #'    as number of clusters. Another method that does not use the reference space
 #'    is "kmeans_classic", which applies k-means directly to the image (after
 #'    the RGB values have been transformed to DIN99 space).
+#'
+#'
 #'    Within each cluster, the top \code{sub} colors (as defined by the analysis)
 #'    are kept. Optionally, the palette can be optimized by running the same procedure
-#'    iteratively until a minimum DeltaE2000 color difference is reached. Optimization
+#'    iteratively until a minimum DeltaE color difference is reached. Optimization
 #'    is stopped after 100 unsuccessful attempts, at which point it is advisable to
-#'    lower the minimum difference. It is important to note that the bigger the
+#'    lower the minimum difference.
+#'
+#'    It is important to note that the bigger the
 #'    palette, the lowest the minimum difference between colors will be.
 #'    The palette is then optionally ordered according to one of hue, chroma, or
 #'    luminance.
+#'
+#'    \strong{Note} the choice of clustering algorithm is important. Large pictures
+#'    will exhaust the memory if using \code{method = "HC"}. Small palettes
+#'    (e.g. 2-3 colors) are better captured by hierarchical clustering.
+#'
 #'
 #' @author Giuseppe D'Agostino
 #'
@@ -306,10 +242,10 @@ analyzePictureCol = function(file_path = NULL, link = NULL, m = NULL, reference_
 #' @export
 
 getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
-                      reference_space = NULL, method = "HC", n = 10, sub = 1,
+                      reference_space = NULL, method = "kmeans", n = 10, sub = 1,
                       ntop = 2000, filter_luminance = "both", filter_chroma = NULL,
                       filter_sd = 1.5, order = "L", keep_extremes = TRUE,
-                      optimize = FALSE, DE2000_target = 4) {
+                      optimize = FALSE, DE_target = 4) {
 
 
   if(!method %in% c("HC", "kmeans", "kmeans_classic")) stop("Unknown method.")
@@ -399,13 +335,13 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
     if(optimize) {
       counter = 0
       pal_kdin_temp = pal_kdin
-      to_optimize = min(getPaletteDistances(pal_kdin_temp)$DE2000)
-      while(to_optimize < DE2000_target) {
+      to_optimize = min(getPaletteDistances(pal_kdin_temp)$DE)
+      while(to_optimize < DE_target) {
         pal_kdin_temp = clusterKDIN(sorted = sorted, n = n, sub = sub, method = method)
-        to_optimize = min(getPaletteDistances(pal_kdin_temp)$DE2000)
+        to_optimize = min(getPaletteDistances(pal_kdin_temp)$DE)
         counter = counter + 1
         if(counter > 99) {
-          message(paste0("Failed to optimize in ", counter, " iterations. Try reducing the DE2000 target."))
+          message(paste0("Failed to optimize in ", counter, " iterations. Try reducing the DE target."))
           break()
          }
         }
@@ -455,7 +391,7 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
 #'     Default is "L".
 #' @param optimize logical, should the palette be optimized for maximal difference?
 #'     Default is FALSE
-#' @param DE2000_target numeric, the target minimum color difference for optimization.
+#' @param DE_target numeric, the target minimum color difference for optimization.
 #'     Default is 4. Only relevant if \code{optimize} is TRUE.
 #' @param bg_color the background color (as named color, hexadecimal or rgb).
 #'     Default is "white".
@@ -483,7 +419,7 @@ getPalette = function(file_path = NULL, link = NULL, m = NULL, analysis = NULL,
 plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space = NULL,
                        method = "HC", n = 20, sub = 1, filter_luminance = "both",
                        filter_chroma = NULL, filter_sd = 1.5, order = "L",
-                       optimize = FALSE, DE2000_target = 4, bg_color = "white",
+                       optimize = FALSE, DE_target = 4, bg_color = "white",
                        keep_extremes = TRUE, title = NULL){
 
   if(is.null(m)){
@@ -511,7 +447,7 @@ plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space 
                    filter_luminance = filter_luminance,
                    filter_chroma = filter_chroma, filter_sd = filter_sd,
                    order = order, optimize = optimize,
-                   DE2000_target = DE2000_target)
+                   DE_target = DE_target)
 
   res = dim(m)[2:1]
 
@@ -555,7 +491,8 @@ plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space 
 #'
 #' @param palette a vector of colors as hexadecimal values
 #'
-#' @return a \code{data.frame} with color pairs and their DeltaE2000 color difference
+#' @return a \code{data.frame} with color pairs and their Delta E (DIN99) color
+#'    difference, i.e. the Euclidean distance in DIN99 color space.
 #'
 #' @details Internal use only.
 #'
@@ -566,13 +503,17 @@ plotWithPal = function(file_path = NULL, link = NULL, m = NULL, reference_space 
 
 getPaletteDistances = function(palette) {
 
-  paletteLAB = as(hex2RGB(palette), "LAB")
+  paletteLAB = coords(as(hex2RGB(palette), "LAB"))
+  paletteDIN = CIELabtoDIN99mod(paletteLAB[,1], paletteLAB[,2], paletteLAB[,3])
 
   dists = expand.grid(seq_len(length(palette)), seq_len(length(palette)))
   dists = dists[dists[,1] != dists[,2],]
   dists$Col1 = palette[dists[,1]]
   dists$Col2 = palette[dists[,2]]
-  dists$DE2000 = deltaE2000mod(coords(paletteLAB)[dists$Var1,], coords(paletteLAB)[dists$Var2,])
+
+  distmat = as.matrix(dist(paletteDIN))
+
+  dists$DE = distmat[dists$Var1, dists$Var2]
 
   return(dists)
 }
@@ -596,7 +537,7 @@ getPaletteDistances = function(palette) {
 hClusterPalette = function(palette, n) {
 
   df = getPaletteDistances(palette)
-  distmat = as.dist(acast(df, formula = Var1 ~ Var2, value.var = "DE2000"))
+  distmat = as.dist(acast(df, formula = Var1 ~ Var2, value.var = "DE"))
   hc = hclust(distmat)
   clusters = cutree(hc, k = n)
 
@@ -604,79 +545,6 @@ hClusterPalette = function(palette, n) {
 
   return(clusters_df)
 }
-
-#' DeltaE200 color difference
-#'
-#' Calculates the Delta E (CIE 2000) color difference between two matrices in CIELab space
-#'
-#' @param Lab1 matrix with L, a, b coordinates for one set of colors
-#' @param Lab2 matrix with L, a, b coordinates for another set of colors
-#'
-#' @return a vector of DeltaE2000 color distances
-#'
-#' @details Internal use only. Slightly modified for vectorisation.
-#'     Originally present in the \code{colorscience} package by Jose Gama.
-#'
-#' @author Jose Gama, modified by Giuseppe D'Agostino
-#'
-#' @references Bruce Justin Lindbloom, 2013 Color Calculator http://www.brucelindbloom.com
-
-deltaE2000mod <- function (Lab1, Lab2) {
-  kL <- 1
-  kC <- 1
-  kH <- 1
-  lBarPrime <- 0.5 * (Lab1[,1] + Lab2[,1])
-  c1 <- sqrt(Lab1[,2] * Lab1[,2] + Lab1[,3] * Lab1[,3])
-  c2 <- sqrt(Lab2[,2] * Lab2[,2] + Lab2[,3] * Lab2[,3])
-  cBar <- 0.5 * (c1 + c2)
-  cBar7 <- cBar^7
-  g <- 0.5 * (1 - sqrt(cBar7/(cBar7 + 6103515625)))
-  a1Prime <- Lab1[,2] * (1 + g)
-  a2Prime <- Lab2[,2] * (1 + g)
-  c1Prime <- sqrt(a1Prime * a1Prime + Lab1[,3] * Lab1[,3])
-  c2Prime <- sqrt(a2Prime * a2Prime + Lab2[,3] * Lab2[,3])
-  cBarPrime <- 0.5 * (c1Prime + c2Prime)
-  h1Prime <- (atan2(Lab1[,3], a1Prime) * 180)/pi
-  h1Prime[h1Prime < 0] <- h1Prime[h1Prime < 0] + 360
-  h2Prime <- (atan2(Lab2[,3], a2Prime) * 180)/pi
-  h2Prime[h2Prime < 0] <- h2Prime[h2Prime < 0] + 360
-
-  hBarPrime <- abs(h1Prime - h2Prime)
-  hBarPrime[hBarPrime > 180] <-  0.5 * (h1Prime[hBarPrime > 180] + h2Prime[hBarPrime > 180] + 360)
-  hBarPrime[hBarPrime <= 180] <- 0.5 * (h1Prime[hBarPrime <= 180] + h2Prime[hBarPrime <= 180])
-
-  t <- 1 - 0.17 * cos(pi * (hBarPrime - 30)/180) + 0.24 * cos(pi * (2 * hBarPrime)/180) +
-    0.32 * cos(pi * (3 * hBarPrime + 6)/180) - 0.2 * cos(pi * (4 * hBarPrime - 63)/180)
-
-  dhPrime = abs(h2Prime - h1Prime)
-  dhPrime[dhPrime <= 180] <- h2Prime[dhPrime <= 180] - h1Prime[dhPrime <= 180]
-  dhPrime[dhPrime > 180 & h2Prime <= h1Prime] <- h2Prime[dhPrime > 180 & h2Prime <= h1Prime]  -
-    h1Prime[dhPrime > 180 & h2Prime <= h1Prime]  + 360
-  dhPrime[dhPrime > 180 & h2Prime > h1Prime] <- h2Prime[dhPrime > 180 & h2Prime > h1Prime] -
-    h1Prime[dhPrime > 180 & h2Prime > h1Prime] - 360
-
-  dLPrime <- Lab2[,1] - Lab1[,1]
-  dCPrime <- c2Prime - c1Prime
-  dHPrime <- 2 * sqrt(c1Prime * c2Prime) * sin(pi * (0.5 *
-                                                       dhPrime)/180)
-  sL <- 1 + ((0.015 * (lBarPrime - 50) * (lBarPrime - 50))/sqrt(20 +
-                                                                  (lBarPrime - 50) * (lBarPrime - 50)))
-
-  sC <- 1 + 0.045 * cBarPrime
-  sH <- 1 + 0.015 * cBarPrime * t
-  dTheta <- 30 * exp(-((hBarPrime - 275)/25) * ((hBarPrime -
-                                                   275)/25))
-  cBarPrime7 <- cBarPrime * cBarPrime * cBarPrime * cBarPrime *
-    cBarPrime * cBarPrime * cBarPrime
-  rC <- sqrt(cBarPrime7/(cBarPrime7 + 6103515625))
-  rT <- -2 * rC * sin(pi * (2 * dTheta)/180)
-  res = sqrt((dLPrime/(kL * sL)) * (dLPrime/(kL * sL)) +
-               (dCPrime/(kC * sC)) * (dCPrime/(kC * sC)) +
-               (dHPrime/(kH * sH)) * (dHPrime/(kH * sH)) +
-               (dCPrime/(kC * sC)) * (dHPrime/(kH * sH)) * rT)
-  return(res)
-}
-
 
 #' Get kNN graph
 #'

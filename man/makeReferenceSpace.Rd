@@ -32,7 +32,7 @@ This function creates the reference space to assign single RGB colors
     color (centroid of the clustering it was included in).
 }
 \note{
-Since the number \code{k} of clusters is usually high (1000-3000) and
+Since the number \code{k} of clusters is usually high (2000-5000) and
     distances are regularly spaced, the Hartigan-Wong algorithm may not converge
     in Quick-Transfer stage. This will throw a warning, but it does not seem to
     affect the results for this application.
