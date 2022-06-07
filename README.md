@@ -29,8 +29,8 @@ The approach works as follows:
 - Optionally, colors can be filtered on high/low luminance and/or chroma (as defined by the HCL color space). Luminance is normally distributed and is filtered using mean +/- standard deviation(s), whereas chroma is filtered using median +/- median absolute deviation(s). 
 
 - Sorted colors are clustered in one of two possible ways:
-     - **Hierachical clustering** (the default): colors are projected to CIELab space and their $\Delta E$ 2000 distance is measured. The distance matrix is used for hierachical clustering, and the dendrogram is cut at a height resulting in a user-defined number of clusters, corresponding to the palette size. 
-     - **K-means clustering**: colors are projected again to the DIN99 space and k-means clustering is run again, setting a user-defined number of centers k, which corresponds to the palette size
+     - **Hierachical clustering**: colors are projected to CIELab space and their $\Delta E$ DIN99 distance is measured. The distance matrix is used for hierachical clustering, and the dendrogram is cut at a height resulting in a user-defined number of clusters, corresponding to the palette size. 
+     - **K-means clustering** (the default): colors are projected again to the DIN99 space and k-means clustering is run again, setting a user-defined number of centers k, which corresponds to the palette size
      - an additional method, **classic K-means** (for lack of a better name) applies k-means clustering directly on picture colors projected to the DIN99 space, bypassing summarization in the reduced color space. It is a slower method that can still yield good results, but does not allow to compare palettes on a shared space.
 
 - The most abundant color in the painting from each cluster is retained, so that every part of the color space is well represented.
