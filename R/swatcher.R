@@ -611,6 +611,8 @@ getKNN <- function(coords, k = 2) {
 #' @importFrom grDevices colorRampPalette rgb
 #' @importFrom methods as
 #' @importFrom colorspace LAB coords swatchplot
+#'                                                 
+#' @export
 
 getContinuousPalette <- function(pal, n = 10, tries = 1, plot = TRUE) {
 
