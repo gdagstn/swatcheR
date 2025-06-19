@@ -1,6 +1,13 @@
 <img src="https://user-images.githubusercontent.com/21171362/171850532-ded8fd04-6233-4f68-b278-2a23bf1ee495.png" align="right" alt="" width="150" />
 
-# swatcheR
+<div id="toc">
+	<ul align="left" style="list-style: none;">
+		<summary>
+			<h1>swatcheR</h1>
+		</summary>
+	</ul>
+</div>
+
 Fast automatic selection of color swatches from images
 
 # Installation
